@@ -1,136 +1,136 @@
 # Gym Diary iOS
 
-Un'app iOS moderna e intuitiva per gestire i tuoi allenamenti e tenere traccia dei tuoi progressi in palestra.
+A modern and intuitive iOS app to manage your workouts and track your gym progress.
 
-## 🏋️‍♂️ Funzionalità
+## 🏋️‍♂️ Features
 
 ### Workout Management
-- **Sezioni di allenamento**: Organizza i tuoi workout in sezioni logiche (es. Push/Pull/Legs, Upper Body, Cardio)
-- **Workout personalizzati**: Crea e gestisci workout con esercizi multipli
-- **Drag & Drop**: Sposta facilmente i workout tra le sezioni
-- **Categorie di esercizi**: Supporto per diversi tipi di esercizi (barbell, dumbbell, bodyweight, machine, etc.)
+- **Training Sections**: Organize your workouts in logical sections (e.g., Push/Pull/Legs, Upper Body, Cardio)
+- **Custom Workouts**: Create and manage workouts with multiple exercises
+- **Drag & Drop**: Easily move workouts between sections
+- **Exercise Categories**: Support for different types of exercises (barbell, dumbbell, bodyweight, machine, etc.)
 
-### Tracking degli Esercizi
-- **Set e ripetizioni**: Registra serie, ripetizioni e pesi per ogni esercizio
-- **Varianti di esercizi**: Supporto per diverse varianti (incline, decline, wide grip, etc.)
-- **Storia degli allenamenti**: Tieni traccia di quando hai eseguito l'ultimo workout
-- **Note personali**: Aggiungi note per ogni esercizio
+### Exercise Tracking
+- **Sets and Reps**: Record sets, repetitions, and weights for each exercise
+- **Exercise Variants**: Support for different variants (incline, decline, wide grip, etc.)
+- **Workout History**: Keep track of when you last performed a workout
+- **Personal Notes**: Add notes for each exercise
 
-### Profilo e Impostazioni
-- **Informazioni personali**: Gestisci i tuoi dati personali e foto profilo
-- **Impostazioni di allenamento**: Configura tempi di riposo predefiniti
-- **Unità di misura**: Scegli tra kg e lbs
-- **Tema**: Supporto per tema chiaro e scuro
-- **Notifiche**: Configura notifiche per i timer di allenamento
+### Profile and Settings
+- **Personal Information**: Manage your personal data and profile photo
+- **Training Settings**: Configure default rest times
+- **Units of Measurement**: Choose between kg and lbs
+- **Theme**: Support for light and dark themes
+- **Notifications**: Configure notifications for workout timers
 
 ### Design System
-- **UI moderna**: Interfaccia pulita e intuitiva con SwiftUI
-- **Gradienti e colori**: Design system completo con palette di colori e gradienti
-- **Componenti riutilizzabili**: Sistema di componenti modulare e consistente
-- **Responsive**: Ottimizzato per diverse dimensioni di schermo iOS
+- **Modern UI**: Clean and intuitive interface with SwiftUI
+- **Gradients and Colors**: Complete design system with color palette and gradients
+- **Reusable Components**: Modular and consistent component system
+- **Responsive**: Optimized for different iOS screen sizes
 
-## 🚀 Tecnologie
+## 🚀 Technologies
 
-- **SwiftUI**: Framework UI moderno di Apple
-- **Swift 5**: Linguaggio di programmazione nativo
-- **iOS 18.5+**: Supporto per le versioni più recenti di iOS
-- **Xcode 16**: Sviluppato con l'ultima versione di Xcode
-- **Firebase**: Integrazione preparata per autenticazione e database (attualmente commentata)
+- **SwiftUI**: Apple's modern UI framework
+- **Swift 5**: Native programming language
+- **iOS 18.5+**: Support for the latest iOS versions
+- **Xcode 16**: Developed with the latest Xcode version
+- **Firebase**: Integration prepared for authentication and database (currently commented out)
 
-## 📱 Requisiti
+## 📱 Requirements
 
-- iOS 18.5 o superiore
-- Xcode 16 o superiore
+- iOS 18.5 or higher
+- Xcode 16 or higher
 - Swift 5.0+
 
-## 🛠️ Installazione
+## 🛠️ Installation
 
-### Prerequisiti
-1. Assicurati di avere Xcode 16 installato
-2. Clona il repository
+### Prerequisites
+1. Make sure you have Xcode 16 installed
+2. Clone the repository
 
-### Setup del Progetto
-1. Apri il file `gym-diary-ios.xcodeproj` in Xcode
-2. Seleziona il target `gym-diary-ios`
-3. Scegli un simulatore iOS o dispositivo fisico
-4. Premi ⌘+R per buildare e eseguire l'app
+### Project Setup
+1. Open the `gym-diary-ios.xcodeproj` file in Xcode
+2. Select the `gym-diary-ios` target
+3. Choose an iOS simulator or physical device
+4. Press ⌘+R to build and run the app
 
-### Clonazione del Repository
+### Repository Cloning
 ```bash
 git clone https://github.com/luketherose/gym-diary-ios-swiftui.git
 cd gym-diary-ios
 open gym-diary-ios.xcodeproj
 ```
 
-## 🏗️ Struttura del Progetto
+## 🏗️ Project Structure
 
 ```
 gym-diary-ios/
 ├── gym-diary-ios/
-│   ├── ContentView.swift          # Vista principale con TabView
-│   ├── PersonalInfoViews.swift    # Viste per il profilo utente
-│   ├── DesignSystem.swift         # Sistema di design e componenti
-│   ├── Models.swift              # Modelli dati dell'app
-│   ├── FirebaseManager.swift     # Gestione Firebase (attualmente commentata)
-│   └── Assets.xcassets/         # Asset grafici
-├── gym-diary-ios.xcodeproj/     # Progetto Xcode
-├── .gitignore                   # File da ignorare in Git
-└── README.md                    # Questo file
+│   ├── ContentView.swift          # Main view with TabView
+│   ├── PersonalInfoViews.swift    # User profile views
+│   ├── DesignSystem.swift         # Design system and components
+│   ├── Models.swift              # Data models
+│   ├── FirebaseManager.swift     # Firebase management (currently commented)
+│   └── Assets.xcassets/         # Graphic assets
+├── gym-diary-ios.xcodeproj/     # Xcode project
+├── .gitignore                   # Git ignore file
+└── README.md                    # This file
 ```
 
-## 🎯 Utilizzo
+## 🎯 Usage
 
-### Creare un Nuovo Workout
-1. Vai alla tab "Workout"
-2. Tocca il pulsante "+" in alto a destra
-3. Inserisci il nome del workout
-4. Seleziona la sezione di destinazione
-5. Tocca "Create"
+### Creating a New Workout
+1. Go to the "Workout" tab
+2. Tap the "+" button in the top right
+3. Enter the workout name
+4. Select the destination section
+5. Tap "Create"
 
-### Creare una Nuova Sezione
-1. Vai alla tab "Workout"
-2. Tocca il pulsante cartella con "+" in alto a sinistra
-3. Inserisci il nome della sezione
-4. Tocca "Create"
+### Creating a New Section
+1. Go to the "Workout" tab
+2. Tap the folder with "+" button in the top left
+3. Enter the section name
+4. Tap "Create"
 
-### Gestire il Profilo
-1. Vai alla tab "Profile"
-2. Tocca sulla sezione account per modificare le informazioni personali
-3. Configura le impostazioni di allenamento
-4. Personalizza le notifiche e il tema
+### Managing Profile
+1. Go to the "Profile" tab
+2. Tap on the account section to edit personal information
+3. Configure training settings
+4. Customize notifications and theme
 
-## 🔧 Configurazione Firebase (Opzionale)
+## 🔧 Firebase Configuration (Optional)
 
-Per abilitare Firebase:
+To enable Firebase:
 
-1. Aggiungi il tuo `GoogleService-Info.plist` nella cartella del progetto
-2. Decommenta le importazioni Firebase in `FirebaseManager.swift`
-3. Decommenta la configurazione Firebase in `gym_diary_iosApp.swift`
-4. Aggiungi le dipendenze Firebase al progetto
+1. Add your `GoogleService-Info.plist` to the project folder
+2. Uncomment Firebase imports in `FirebaseManager.swift`
+3. Uncomment Firebase configuration in `gym_diary_iosApp.swift`
+4. Add Firebase dependencies to the project
 
-## 🤝 Contribuire
+## 🤝 Contributing
 
-1. Fai un fork del progetto
-2. Crea un branch per la tua feature (`git checkout -b feature/AmazingFeature`)
-3. Committa le tue modifiche (`git commit -m 'Add some AmazingFeature'`)
-4. Pusha al branch (`git push origin feature/AmazingFeature`)
-5. Apri una Pull Request
+1. Fork the project
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## 📄 Licenza
+## 📄 License
 
-Questo progetto è sotto licenza MIT. Vedi il file `LICENSE` per i dettagli.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
 
-## 👨‍💻 Autore
+## 👨‍💻 Author
 
 **Luca La Rosa**
 - GitHub: [@luketherose](https://github.com/luketherose)
 
-## 🙏 Ringraziamenti
+## 🙏 Acknowledgments
 
-- Apple per SwiftUI e le tecnologie iOS
-- La community Swift per l'ispirazione e il supporto
-- Tutti i contributori che hanno aiutato con questo progetto
+- Apple for SwiftUI and iOS technologies
+- The Swift community for inspiration and support
+- All contributors who helped with this project
 
 ---
 
-⭐ Se ti piace questo progetto, considera di dargli una stella su GitHub!
+⭐ If you like this project, consider giving it a star on GitHub!
