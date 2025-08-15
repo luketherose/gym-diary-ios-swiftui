@@ -154,6 +154,8 @@ struct Workout: Identifiable, Codable {
     let updatedAt: Date
     let lastExecuted: Date?
     let sectionId: String
+    let iconName: String
+    let colorName: String
     
     init(id: String = UUID().uuidString,
          userId: String,
@@ -163,7 +165,9 @@ struct Workout: Identifiable, Codable {
          createdAt: Date = Date(),
          updatedAt: Date = Date(),
          lastExecuted: Date? = nil,
-         sectionId: String = "") {
+         sectionId: String = "",
+         iconName: String = "dumbbell.fill",
+         colorName: String = "Blue") {
         self.id = id
         self.userId = userId
         self.name = name
@@ -173,6 +177,8 @@ struct Workout: Identifiable, Codable {
         self.updatedAt = updatedAt
         self.lastExecuted = lastExecuted
         self.sectionId = sectionId
+        self.iconName = iconName
+        self.colorName = colorName
     }
 }
 

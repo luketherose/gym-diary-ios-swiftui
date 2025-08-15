@@ -267,6 +267,74 @@ struct GradientBadge: View {
     }
 }
 
+// MARK: - Workout Icons and Colors
+struct WorkoutIcon {
+    let systemName: String
+    let displayName: String
+    let category: String
+    
+    static let allIcons: [WorkoutIcon] = [
+        // Strength Training
+        WorkoutIcon(systemName: "dumbbell.fill", displayName: "Dumbbell", category: "Strength"),
+        WorkoutIcon(systemName: "figure.strengthtraining.traditional", displayName: "Barbell", category: "Strength"),
+        WorkoutIcon(systemName: "figure.strengthtraining.functional", displayName: "Functional", category: "Strength"),
+        WorkoutIcon(systemName: "figure.boxing", displayName: "Boxing", category: "Strength"),
+        
+        // Cardio
+        WorkoutIcon(systemName: "figure.run", displayName: "Running", category: "Cardio"),
+        WorkoutIcon(systemName: "figure.walk", displayName: "Walking", category: "Cardio"),
+        WorkoutIcon(systemName: "figure.cycling", displayName: "Cycling", category: "Cardio"),
+        WorkoutIcon(systemName: "figure.rower", displayName: "Rowing", category: "Cardio"),
+        
+        // Flexibility & Mobility
+        WorkoutIcon(systemName: "figure.flexibility", displayName: "Flexibility", category: "Mobility"),
+        WorkoutIcon(systemName: "figure.yoga", displayName: "Yoga", category: "Mobility"),
+        WorkoutIcon(systemName: "figure.pilates", displayName: "Pilates", category: "Mobility"),
+        WorkoutIcon(systemName: "figure.strengthtraining.flexibility", displayName: "Stretching", category: "Mobility"),
+        
+        // Sports
+        WorkoutIcon(systemName: "figure.soccer", displayName: "Soccer", category: "Sports"),
+        WorkoutIcon(systemName: "figure.basketball", displayName: "Basketball", category: "Sports"),
+        WorkoutIcon(systemName: "figure.tennis", displayName: "Tennis", category: "Sports"),
+        WorkoutIcon(systemName: "figure.swimming", displayName: "Swimming", category: "Sports"),
+        
+        // General Fitness
+        WorkoutIcon(systemName: "figure.hiking", displayName: "Hiking", category: "General"),
+        WorkoutIcon(systemName: "figure.climbing", displayName: "Climbing", category: "General"),
+        WorkoutIcon(systemName: "figure.martial.arts", displayName: "Martial Arts", category: "General"),
+        WorkoutIcon(systemName: "figure.dance", displayName: "Dance", category: "General")
+    ]
+    
+    static func icons(for category: String) -> [WorkoutIcon] {
+        return allIcons.filter { $0.category == category }
+    }
+    
+    static func randomIcon() -> WorkoutIcon {
+        return allIcons.randomElement() ?? allIcons[0]
+    }
+}
+
+struct WorkoutColor {
+    let color: Color
+    let name: String
+    let isDark: Bool
+    
+    static let allColors: [WorkoutColor] = [
+        WorkoutColor(color: .blue, name: "Blue", isDark: false),
+        WorkoutColor(color: .red, name: "Red", isDark: false),
+        WorkoutColor(color: .green, name: "Green", isDark: false),
+        WorkoutColor(color: .orange, name: "Orange", isDark: false),
+        WorkoutColor(color: .purple, name: "Purple", isDark: false),
+        WorkoutColor(color: .pink, name: "Pink", isDark: false),
+        WorkoutColor(color: .indigo, name: "Indigo", isDark: true),
+        WorkoutColor(color: .teal, name: "Teal", isDark: true)
+    ]
+    
+    static func randomColor() -> WorkoutColor {
+        return allColors.randomElement() ?? allColors[0]
+    }
+}
+
 // MARK: - Workout Category Helper
 struct WorkoutCategory {
     let icon: String

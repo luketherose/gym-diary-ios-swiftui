@@ -44,7 +44,7 @@ struct WorkoutView: View {
                     ExerciseSet(exerciseId: "exercise2", reps: 10, weight: 50),
                     ExerciseSet(exerciseId: "exercise2", reps: 8, weight: 55)
                 ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -2, to: Date()), sectionId: "section1"),
+            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -2, to: Date()), sectionId: "section1", iconName: "figure.strengthtraining.traditional", colorName: "Red"),
             Workout(userId: "user123", name: "Pull Day", exercises: [
                 Exercise(workoutId: "workout2", name: "Deadlift", category: .barbell, sets: [
                     ExerciseSet(exerciseId: "exercise3", reps: 5, weight: 120),
@@ -56,7 +56,7 @@ struct WorkoutView: View {
                     ExerciseSet(exerciseId: "exercise4", reps: 8, weight: 0),
                     ExerciseSet(exerciseId: "exercise4", reps: 6, weight: 0)
                 ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -5, to: Date()), sectionId: "section1"),
+            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -5, to: Date()), sectionId: "section1", iconName: "figure.strengthtraining.traditional", colorName: "Blue"),
             Workout(userId: "user123", name: "Legs Day", exercises: [
                 Exercise(workoutId: "workout3", name: "Squat", category: .barbell, sets: [
                     ExerciseSet(exerciseId: "exercise5", reps: 8, weight: 100),
@@ -68,7 +68,7 @@ struct WorkoutView: View {
                     ExerciseSet(exerciseId: "exercise6", reps: 10, weight: 80),
                     ExerciseSet(exerciseId: "exercise6", reps: 8, weight: 85)
                 ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -8, to: Date()), sectionId: "section1")
+            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -8, to: Date()), sectionId: "section1", iconName: "figure.strengthtraining.traditional", colorName: "Green")
         ]),
         WorkoutSection(userId: "user123", name: "Upper Body", workouts: [
             Workout(userId: "user123", name: "Chest & Triceps", exercises: [
@@ -82,7 +82,7 @@ struct WorkoutView: View {
                     ExerciseSet(exerciseId: "exercise8", reps: 12, weight: 0),
                     ExerciseSet(exerciseId: "exercise8", reps: 10, weight: 0)
                 ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -1, to: Date()), sectionId: "section2")
+            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -1, to: Date()), sectionId: "section2", iconName: "figure.strengthtraining.functional", colorName: "Orange")
         ]),
         WorkoutSection(userId: "user123", name: "Cardio", workouts: [
             Workout(userId: "user123", name: "HIIT Training", exercises: [
@@ -96,7 +96,7 @@ struct WorkoutView: View {
                     ExerciseSet(exerciseId: "exercise10", reps: 30, weight: 0),
                     ExerciseSet(exerciseId: "exercise10", reps: 25, weight: 0)
                 ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -3, to: Date()), sectionId: "section3")
+            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -3, to: Date()), sectionId: "section3", iconName: "figure.run", colorName: "Purple")
         ])
     ]
     
@@ -175,8 +175,12 @@ struct WorkoutCard: View {
     @State private var showingWorkoutDetails = false
     @Environment(\.colorScheme) private var colorScheme
     
-    private var category: WorkoutCategory {
-        WorkoutCategory.category(for: workout)
+    private var workoutIcon: WorkoutIcon {
+        WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? WorkoutIcon.randomIcon()
+    }
+    
+    private var workoutColor: WorkoutColor {
+        WorkoutColor.allColors.first { $0.name == workout.colorName } ?? WorkoutColor.randomColor()
     }
 
     var body: some View {
@@ -186,19 +190,21 @@ struct WorkoutCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Header with icon and gradient background
                 HStack {
-                    GradientIcon(
-                        systemName: category.icon,
-                        gradient: category.gradient,
-                        size: 28
-                    )
-                    .frame(width: 32, height: 32)
+                    Image(systemName: workoutIcon.systemName)
+                        .font(.title2)
+                        .foregroundColor(.white)
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Circle()
+                                .fill(workoutColor.color)
+                        )
                     
                     Spacer()
                     
                     // Exercise count badge
                     GradientBadge(
                         text: "\(workout.exercises.count)",
-                        gradient: category.gradient
+                        gradient: LinearGradient(colors: [workoutColor.color, workoutColor.color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
                     )
                 }
                 .padding(.horizontal, DesignSystem.Spacing.large)
@@ -228,8 +234,8 @@ struct WorkoutCard: View {
                         
                         // Small indicator for workout type
                         GradientBadge(
-                            text: workout.exercises.count > 0 ? category.name : "Empty",
-                            gradient: DesignSystem.Gradients.primary
+                            text: workout.exercises.count > 0 ? workoutIcon.displayName : "Empty",
+                            gradient: LinearGradient(colors: [workoutColor.color, workoutColor.color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
                         )
                     }
                 }
@@ -241,7 +247,7 @@ struct WorkoutCard: View {
                     .fill(DesignSystem.Colors.cardBackground(for: colorScheme))
                     .overlay(
                         RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.large)
-                            .fill(category.gradient)
+                            .fill(workoutColor.color)
                             .mask(
                                 RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.large)
                                     .fill(
@@ -275,8 +281,12 @@ struct WorkoutDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     
-    private var category: WorkoutCategory {
-        WorkoutCategory.category(for: workout)
+    private var workoutIcon: WorkoutIcon {
+        WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? WorkoutIcon.randomIcon()
+    }
+    
+    private var workoutColor: WorkoutColor {
+        WorkoutColor.allColors.first { $0.name == workout.colorName } ?? WorkoutColor.randomColor()
     }
     
     var body: some View {
@@ -288,11 +298,14 @@ struct WorkoutDetailView: View {
                 VStack(spacing: DesignSystem.Spacing.large) {
                     // Header
                     HStack {
-                        GradientIcon(
-                            systemName: category.icon,
-                            gradient: category.gradient,
-                            size: 32
-                        )
+                        Image(systemName: workoutIcon.systemName)
+                            .font(.title)
+                            .foregroundColor(.white)
+                            .frame(width: 40, height: 40)
+                            .background(
+                                Circle()
+                                    .fill(workoutColor.color)
+                            )
                         
                         VStack(alignment: .leading, spacing: 4) {
                             Text(workout.name)
@@ -329,7 +342,7 @@ struct WorkoutDetailView: View {
                     // Start Workout Button
                     GradientButton(
                         title: "Start Workout",
-                        gradient: category.gradient
+                        gradient: LinearGradient(colors: [workoutColor.color, workoutColor.color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
                     ) {
                         // Start workout action
                         dismiss()
@@ -399,6 +412,111 @@ struct ExerciseDetailRow: View {
     }
 }
 
+// MARK: - Workout Icon and Color Selector
+struct WorkoutIconColorSelector: View {
+    @Binding var selectedIcon: WorkoutIcon
+    @Binding var selectedColor: WorkoutColor
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var selectedCategory = "Strength"
+    
+    private let categories = ["Strength", "Cardio", "Mobility", "Sports", "General"]
+    
+    var body: some View {
+        VStack(spacing: DesignSystem.Spacing.large) {
+            // Category Picker
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                Text("Category")
+                    .font(.headline)
+                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                
+                Picker("Category", selection: $selectedCategory) {
+                    ForEach(categories, id: \.self) { category in
+                        Text(category).tag(category)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .onChange(of: selectedCategory) { _ in
+                    // Update selected icon to first icon in new category
+                    if let firstIcon = WorkoutIcon.icons(for: selectedCategory).first {
+                        selectedIcon = firstIcon
+                    }
+                }
+            }
+            
+            // Icon Selection
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                Text("Icon")
+                    .font(.headline)
+                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: DesignSystem.Spacing.medium) {
+                    ForEach(WorkoutIcon.icons(for: selectedCategory), id: \.systemName) { icon in
+                        Button(action: {
+                            selectedIcon = icon
+                        }) {
+                            VStack(spacing: 4) {
+                                Image(systemName: icon.systemName)
+                                    .font(.title2)
+                                    .foregroundColor(selectedIcon.systemName == icon.systemName ? .white : selectedColor.color)
+                                    .frame(width: 40, height: 40)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                            .fill(selectedIcon.systemName == icon.systemName ? selectedColor.color : Color.clear)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                                    .stroke(selectedColor.color, lineWidth: selectedIcon.systemName == icon.systemName ? 0 : 2)
+                                            )
+                                    )
+                                
+                                Text(icon.displayName)
+                                    .font(.caption)
+                                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                                    .lineLimit(1)
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+            }
+            
+            // Color Selection
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                Text("Color")
+                    .font(.headline)
+                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: DesignSystem.Spacing.medium) {
+                    ForEach(WorkoutColor.allColors, id: \.name) { color in
+                        Button(action: {
+                            selectedColor = color
+                        }) {
+                            VStack(spacing: 4) {
+                                Circle()
+                                    .fill(color.color)
+                                    .frame(width: 40, height: 40)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.white, lineWidth: selectedColor.name == color.name ? 3 : 0)
+                                    )
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.black.opacity(0.2), lineWidth: selectedColor.name == color.name ? 0 : 1)
+                                    )
+                                
+                                Text(color.name)
+                                    .font(.caption)
+                                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                                    .lineLimit(1)
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Create Workout View
 struct CreateWorkoutView: View {
     @Binding var sections: [WorkoutSection]
@@ -406,6 +524,8 @@ struct CreateWorkoutView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var workoutName = ""
     @State private var selectedSectionIndex = 0
+    @State private var selectedIcon = WorkoutIcon.randomIcon()
+    @State private var selectedColor = WorkoutColor.randomColor()
     
     var body: some View {
         NavigationView {
@@ -463,6 +583,12 @@ struct CreateWorkoutView: View {
                                             .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
                                     )
                                 }
+                                
+                                // Icon and Color Selection
+                                WorkoutIconColorSelector(
+                                    selectedIcon: $selectedIcon,
+                                    selectedColor: $selectedColor
+                                )
                             }
                             
                             // Info text
@@ -501,7 +627,9 @@ struct CreateWorkoutView: View {
                                     let newWorkout = Workout(
                                         userId: "user123",
                                         name: workoutName,
-                                        sectionId: sections[selectedSectionIndex].id
+                                        sectionId: sections[selectedSectionIndex].id,
+                                        iconName: selectedIcon.systemName,
+                                        colorName: selectedColor.name
                                     )
                                     sections[selectedSectionIndex].workouts.append(newWorkout)
                                     dismiss()
