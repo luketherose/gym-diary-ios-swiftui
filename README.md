@@ -57,7 +57,7 @@ Un'app iOS moderna e intuitiva per gestire i tuoi allenamenti e tenere traccia d
 
 ### Clonazione del Repository
 ```bash
-git clone https://github.com/tuo-username/gym-diary-ios.git
+git clone https://github.com/luketherose/gym-diary-ios-swiftui.git
 cd gym-diary-ios
 open gym-diary-ios.xcodeproj
 ```
@@ -123,7 +123,7 @@ Questo progetto è sotto licenza MIT. Vedi il file `LICENSE` per i dettagli.
 ## 👨‍💻 Autore
 
 **Luca La Rosa**
-- GitHub: [@tuo-username](https://github.com/tuo-username)
+- GitHub: [@luketherose](https://github.com/luketherose)
 
 ## 🙏 Ringraziamenti
 
