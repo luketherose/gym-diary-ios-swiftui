@@ -68,7 +68,7 @@ struct WorkoutsView: View {
                     ExerciseSet(exerciseId: "exercise10", reps: 25, weight: 0),
                     ExerciseSet(exerciseId: "exercise10", reps: 25, weight: 0)
                 ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -3, to: Date()), sectionId: "section3", iconName: "figure.run", colorName: "Purple", chipText: "Cardio")
+            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -3, to: Date()), sectionId: "section3", iconName: "figure.running", colorName: "Purple", chipText: "Cardio")
         ])
     ]
     
@@ -205,7 +205,7 @@ struct WorkoutSectionView: View {
                 .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
         )
         .sheet(isPresented: $showingCreateWorkout) {
-            CreateWorkoutView(sections: .constant([section]))
+            CreateWorkoutForSectionView(section: $section)
         }
     }
 }
@@ -271,7 +271,7 @@ struct WorkoutIconColorSelector: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedCategory = "Strength"
     
-    private let categories = ["Strength", "Cardio", "Mobility", "Sports", "General"]
+    private let categories = ["Strength", "Cardio", "Mobility"]
     
     var body: some View {
         VStack(spacing: DesignSystem.Spacing.large) {
@@ -376,8 +376,8 @@ struct CreateWorkoutView: View {
     @Environment(\.colorScheme) private var colorScheme
                 @State private var workoutName = ""
             @State private var selectedSectionIndex = 0
-            @State private var selectedIcon = WorkoutIcon.randomIcon()
-            @State private var selectedColor = WorkoutColor.randomColor()
+            @State private var selectedIcon = WorkoutIcon.allIcons.first ?? WorkoutIcon.randomIcon()
+            @State private var selectedColor = WorkoutColor.allColors.first ?? WorkoutColor.randomColor()
             @State private var chipText = ""
     
     var body: some View {
@@ -429,7 +429,7 @@ struct CreateWorkoutView: View {
                                         )
                                 }
                                 
-                                VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                                VStack(alignment: .center, spacing: DesignSystem.Spacing.small) {
                                     Text("Section")
                                         .font(.headline)
                                         .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
@@ -486,6 +486,90 @@ struct CreateWorkoutView: View {
                 sections[selectedSectionIndex].workouts.append(newWorkout)
                 dismiss()
             }
+}
+
+// MARK: - Create Workout For Specific Section
+struct CreateWorkoutForSectionView: View {
+    @Binding var section: WorkoutSection
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var workoutName = ""
+    @State private var selectedIcon = WorkoutIcon.allIcons.first ?? WorkoutIcon.randomIcon()
+    @State private var selectedColor = WorkoutColor.allColors.first ?? WorkoutColor.randomColor()
+    @State private var chipText = ""
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                DesignSystem.Colors.background(for: colorScheme)
+                    .ignoresSafeArea()
+                
+                VStack(spacing: DesignSystem.Spacing.large) {
+                    // Header
+                    HStack {
+                        Button("Cancel") { dismiss() }
+                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                        Spacer()
+                        Text("Create Workout")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                        Spacer()
+                        Button("Create") { create() }
+                            .foregroundColor(DesignSystem.Colors.primary)
+                            .disabled(workoutName.isEmpty)
+                    }
+                    .padding(DesignSystem.Spacing.large)
+                    
+                    ScrollView {
+                        VStack(spacing: DesignSystem.Spacing.large) {
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                                Text("Workout Name")
+                                    .font(.headline)
+                                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                                TextField("Enter workout name", text: $workoutName)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .background(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                            .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
+                                    )
+                            }
+                            
+                            WorkoutIconColorSelector(
+                                selectedIcon: $selectedIcon,
+                                selectedColor: $selectedColor
+                            )
+                            
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                                Text("Chip Text")
+                                    .font(.headline)
+                                TextField("e.g., Push, Pull, Legs...", text: $chipText)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .background(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                            .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
+                                    )
+                            }
+                        }
+                        .padding(DesignSystem.Spacing.large)
+                    }
+                }
+            }
+        }
+    }
+    
+    private func create() {
+        let newWorkout = Workout(
+            userId: "user123",
+            name: workoutName,
+            sectionId: section.id,
+            iconName: selectedIcon.systemName,
+            colorName: selectedColor.name,
+            chipText: chipText.isEmpty ? "New" : chipText
+        )
+        section.workouts.append(newWorkout)
+        dismiss()
+    }
 }
 
 // MARK: - Workout Card

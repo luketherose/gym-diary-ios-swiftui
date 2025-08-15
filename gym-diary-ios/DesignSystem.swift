@@ -274,35 +274,22 @@ struct WorkoutIcon {
     let category: String
     
     static let allIcons: [WorkoutIcon] = [
-        // Strength Training
-        WorkoutIcon(systemName: "dumbbell.fill", displayName: "Dumbbell", category: "Strength"),
+        // Strength (palestra)
+        WorkoutIcon(systemName: "dumbbell", displayName: "Dumbbell", category: "Strength"),
         WorkoutIcon(systemName: "figure.strengthtraining.traditional", displayName: "Barbell", category: "Strength"),
         WorkoutIcon(systemName: "figure.strengthtraining.functional", displayName: "Functional", category: "Strength"),
-        WorkoutIcon(systemName: "figure.boxing", displayName: "Boxing", category: "Strength"),
-        
-        // Cardio
+
+        // Cardio (attrezzi da palestra)
         WorkoutIcon(systemName: "figure.run", displayName: "Running", category: "Cardio"),
         WorkoutIcon(systemName: "figure.walk", displayName: "Walking", category: "Cardio"),
-        WorkoutIcon(systemName: "figure.cycling", displayName: "Cycling", category: "Cardio"),
-        WorkoutIcon(systemName: "figure.rower", displayName: "Rowing", category: "Cardio"),
-        
-        // Flexibility & Mobility
-        WorkoutIcon(systemName: "figure.flexibility", displayName: "Flexibility", category: "Mobility"),
+        WorkoutIcon(systemName: "figure.walk.circle", displayName: "Walking Circle", category: "Cardio"),
+        WorkoutIcon(systemName: "figure.outdoor.cycle", displayName: "Outdoor Cycle", category: "Cardio"),
+
+        // Mobility / Recovery
         WorkoutIcon(systemName: "figure.yoga", displayName: "Yoga", category: "Mobility"),
-        WorkoutIcon(systemName: "figure.pilates", displayName: "Pilates", category: "Mobility"),
-        WorkoutIcon(systemName: "figure.strengthtraining.flexibility", displayName: "Stretching", category: "Mobility"),
-        
-        // Sports
-        WorkoutIcon(systemName: "figure.soccer", displayName: "Soccer", category: "Sports"),
-        WorkoutIcon(systemName: "figure.basketball", displayName: "Basketball", category: "Sports"),
-        WorkoutIcon(systemName: "figure.tennis", displayName: "Tennis", category: "Sports"),
-        WorkoutIcon(systemName: "figure.swimming", displayName: "Swimming", category: "Sports"),
-        
-        // General Fitness
-        WorkoutIcon(systemName: "figure.hiking", displayName: "Hiking", category: "General"),
-        WorkoutIcon(systemName: "figure.climbing", displayName: "Climbing", category: "General"),
-        WorkoutIcon(systemName: "figure.martial.arts", displayName: "Martial Arts", category: "General"),
-        WorkoutIcon(systemName: "figure.dance", displayName: "Dance", category: "General")
+        WorkoutIcon(systemName: "figure.core.training", displayName: "Core", category: "Mobility"),
+        WorkoutIcon(systemName: "figure.cooldown", displayName: "Cooldown", category: "Mobility"),
+        WorkoutIcon(systemName: "figure.flexibility", displayName: "Flexibility", category: "Mobility")
     ]
     
     static func icons(for category: String) -> [WorkoutIcon] {
