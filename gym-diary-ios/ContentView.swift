@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var isDarkTheme = false
+    @State private var isDarkTheme = true
     
     var body: some View {
         TabView {
@@ -90,6 +90,9 @@ struct ProfileView: View {
                         
                         // Version Section
                         ProfileVersionSection()
+                        
+                        // Support Section
+                        ProfileSupportSection()
                     }
                     .padding(DesignSystem.Spacing.large)
                 }
@@ -398,6 +401,85 @@ struct ProfileVersionSection: View {
                 Spacer()
             }
             .padding(.vertical, DesignSystem.Spacing.small)
+        }
+    }
+}
+
+// MARK: - Profile Support Section
+struct ProfileSupportSection: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var showingHelpSupport = false
+    @State private var showingRateApp = false
+    
+    var body: some View {
+        CardContainer {
+            VStack(spacing: DesignSystem.Spacing.medium) {
+                HStack {
+                    Text("Support & Feedback")
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                    Spacer()
+                }
+                
+                VStack(spacing: DesignSystem.Spacing.medium) {
+                    Button(action: {
+                        showingHelpSupport = true
+                    }) {
+                        HStack {
+                            GradientIcon(
+                                systemName: "questionmark.circle.fill",
+                                gradient: DesignSystem.Gradients.primary,
+                                size: 24
+                            )
+                            
+                            Text("Help & Support")
+                                .font(.body)
+                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                            
+                            Spacer()
+                            
+                            GradientIcon(
+                                systemName: "chevron.right",
+                                gradient: DesignSystem.Gradients.primary,
+                                size: 16
+                            )
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    Button(action: {
+                        showingRateApp = true
+                    }) {
+                        HStack {
+                            GradientIcon(
+                                systemName: "star.fill",
+                                gradient: DesignSystem.Gradients.warning,
+                                size: 24
+                            )
+                            
+                            Text("Rate App")
+                                .font(.body)
+                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                            
+                            Spacer()
+                            
+                            GradientIcon(
+                                systemName: "chevron.right",
+                                gradient: DesignSystem.Gradients.primary,
+                                size: 16
+                            )
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+        }
+        .sheet(isPresented: $showingHelpSupport) {
+            HelpSupportView()
+        }
+        .sheet(isPresented: $showingRateApp) {
+            RateAppView()
         }
     }
 }

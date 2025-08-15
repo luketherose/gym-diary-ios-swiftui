@@ -16,7 +16,7 @@ struct WorkoutsView: View {
                     ExerciseSet(exerciseId: "exercise2", reps: 10, weight: 50),
                     ExerciseSet(exerciseId: "exercise2", reps: 8, weight: 55)
                 ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -2, to: Date()), sectionId: "section1", iconName: "figure.strengthtraining.traditional", colorName: "Red"),
+            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -2, to: Date()), sectionId: "section1", iconName: "figure.strengthtraining.traditional", colorName: "Red", chipText: "Push"),
             Workout(userId: "user123", name: "Pull Day", exercises: [
                 Exercise(workoutId: "workout2", name: "Deadlift", category: .barbell, sets: [
                     ExerciseSet(exerciseId: "exercise3", reps: 5, weight: 120),
@@ -28,7 +28,7 @@ struct WorkoutsView: View {
                     ExerciseSet(exerciseId: "exercise4", reps: 6, weight: 0),
                     ExerciseSet(exerciseId: "exercise4", reps: 6, weight: 0)
                 ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -5, to: Date()), sectionId: "section1", iconName: "figure.strengthtraining.traditional", colorName: "Blue"),
+            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -2, to: Date()), sectionId: "section1", iconName: "figure.strengthtraining.traditional", colorName: "Blue", chipText: "Pull"),
             Workout(userId: "user123", name: "Legs Day", exercises: [
                 Exercise(workoutId: "workout3", name: "Squat", category: .barbell, sets: [
                     ExerciseSet(exerciseId: "exercise5", reps: 8, weight: 100),
@@ -40,7 +40,7 @@ struct WorkoutsView: View {
                     ExerciseSet(exerciseId: "exercise6", reps: 10, weight: 80),
                     ExerciseSet(exerciseId: "exercise6", reps: 8, weight: 85)
                 ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -8, to: Date()), sectionId: "section1", iconName: "figure.strengthtraining.traditional", colorName: "Green")
+            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -8, to: Date()), sectionId: "section1", iconName: "figure.strengthtraining.traditional", colorName: "Green", chipText: "Legs")
         ]),
         WorkoutSection(userId: "user123", name: "Upper Body", workouts: [
             Workout(userId: "user123", name: "Upper Body Circuit", exercises: [
@@ -54,7 +54,7 @@ struct WorkoutsView: View {
                     ExerciseSet(exerciseId: "exercise8", reps: 8, weight: 0),
                     ExerciseSet(exerciseId: "exercise8", reps: 6, weight: 0)
                 ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -1, to: Date()), sectionId: "section2", iconName: "figure.strengthtraining.functional", colorName: "Orange")
+            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -1, to: Date()), sectionId: "section2", iconName: "figure.strengthtraining.functional", colorName: "Orange", chipText: "Upper")
         ]),
         WorkoutSection(userId: "user123", name: "Cardio", workouts: [
             Workout(userId: "user123", name: "HIIT Cardio", exercises: [
@@ -68,7 +68,7 @@ struct WorkoutsView: View {
                     ExerciseSet(exerciseId: "exercise10", reps: 25, weight: 0),
                     ExerciseSet(exerciseId: "exercise10", reps: 25, weight: 0)
                 ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -3, to: Date()), sectionId: "section3", iconName: "figure.run", colorName: "Purple")
+            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -3, to: Date()), sectionId: "section3", iconName: "figure.run", colorName: "Purple", chipText: "Cardio")
         ])
     ]
     
@@ -374,10 +374,11 @@ struct CreateWorkoutView: View {
     @Binding var sections: [WorkoutSection]
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
-    @State private var workoutName = ""
-    @State private var selectedSectionIndex = 0
-    @State private var selectedIcon = WorkoutIcon.randomIcon()
-    @State private var selectedColor = WorkoutColor.randomColor()
+                @State private var workoutName = ""
+            @State private var selectedSectionIndex = 0
+            @State private var selectedIcon = WorkoutIcon.randomIcon()
+            @State private var selectedColor = WorkoutColor.randomColor()
+            @State private var chipText = ""
     
     var body: some View {
         NavigationView {
@@ -445,11 +446,25 @@ struct CreateWorkoutView: View {
                                     )
                                 }
                                 
-                                // Icon and Color Selection
-                                WorkoutIconColorSelector(
-                                    selectedIcon: $selectedIcon,
-                                    selectedColor: $selectedColor
-                                )
+                                                                        // Icon and Color Selection
+                                        WorkoutIconColorSelector(
+                                            selectedIcon: $selectedIcon,
+                                            selectedColor: $selectedColor
+                                        )
+                                        
+                                        // Chip Text Input
+                                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                                            Text("Chip Text")
+                                                .font(.headline)
+                                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                                            
+                                            TextField("e.g., Push, Pull, Legs, Upper, Lower...", text: $chipText)
+                                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                                        .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
+                                                )
+                                        }
                             }
                         }
                         .padding(DesignSystem.Spacing.large)
@@ -459,17 +474,18 @@ struct CreateWorkoutView: View {
         }
     }
     
-    private func createWorkout() {
-        let newWorkout = Workout(
-            userId: "user123",
-            name: workoutName,
-            sectionId: sections[selectedSectionIndex].id,
-            iconName: selectedIcon.systemName,
-            colorName: selectedColor.name
-        )
-        sections[selectedSectionIndex].workouts.append(newWorkout)
-        dismiss()
-    }
+                private func createWorkout() {
+                let newWorkout = Workout(
+                    userId: "user123",
+                    name: workoutName,
+                    sectionId: sections[selectedSectionIndex].id,
+                    iconName: selectedIcon.systemName,
+                    colorName: selectedColor.name,
+                    chipText: chipText.isEmpty ? "New" : chipText
+                )
+                sections[selectedSectionIndex].workouts.append(newWorkout)
+                dismiss()
+            }
 }
 
 // MARK: - Workout Card
@@ -504,9 +520,9 @@ struct WorkoutCard: View {
                     
                     Spacer()
                     
-                    // Exercise count badge
+                    // Custom chip text badge
                     GradientBadge(
-                        text: "\(workout.exercises.count)",
+                        text: workout.chipText.isEmpty ? "\(workout.exercises.count)" : workout.chipText,
                         gradient: LinearGradient(colors: [workoutColor.color, workoutColor.color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
                     )
                 }

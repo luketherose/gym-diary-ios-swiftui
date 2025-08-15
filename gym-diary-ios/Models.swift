@@ -156,6 +156,7 @@ struct Workout: Identifiable, Codable {
     let sectionId: String
     let iconName: String
     let colorName: String
+    let chipText: String
     
     init(id: String = UUID().uuidString,
          userId: String,
@@ -167,7 +168,8 @@ struct Workout: Identifiable, Codable {
          lastExecuted: Date? = nil,
          sectionId: String = "",
          iconName: String = "dumbbell.fill",
-         colorName: String = "Blue") {
+         colorName: String = "Blue",
+         chipText: String = "") {
         self.id = id
         self.userId = userId
         self.name = name
@@ -179,6 +181,7 @@ struct Workout: Identifiable, Codable {
         self.sectionId = sectionId
         self.iconName = iconName
         self.colorName = colorName
+        self.chipText = chipText
     }
 }
 
