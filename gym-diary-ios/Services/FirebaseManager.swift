@@ -147,7 +147,7 @@ class FirebaseManager: ObservableObject {
         //     "name": exercise.name,
         //     "muscleGroup": exercise.muscleGroup as Any,
         //     "category": exercise.category.rawValue,
-        //     "variant": exercise.variant?.rawValue as Any,
+        //     "variants": exercise.variants.map { $0.rawValue },
         //     "order": exercise.order,
         //     "imageUrl": exercise.imageUrl as Any,
         //     "defaultRestSec": exercise.defaultRestSec as Any,

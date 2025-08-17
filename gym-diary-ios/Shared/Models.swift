@@ -147,16 +147,16 @@ enum Theme: String, CaseIterable, Codable {
 struct Workout: Identifiable, Codable {
     let id: String
     let userId: String
-    let name: String
+    var name: String
     let description: String?
-    let exercises: [Exercise]
+    var exercises: [Exercise]
     let createdAt: Date
     let updatedAt: Date
     let lastExecuted: Date?
     let sectionId: String
-    let iconName: String
-    let colorName: String
-    let chipText: String
+    var iconName: String
+    var colorName: String
+    var chipText: String
     
     init(id: String = UUID().uuidString,
          userId: String,
@@ -190,26 +190,29 @@ struct Exercise: Identifiable, Codable {
     let workoutId: String
     let name: String
     let category: ExerciseCategory
-    let variant: ExerciseVariant?
-    let sets: [ExerciseSet]
+    var variants: [ExerciseVariant]
+    var sets: [ExerciseSet]
     let order: Int
+    let restTime: Int
     let notes: String?
     
     init(id: String = UUID().uuidString,
          workoutId: String,
          name: String,
          category: ExerciseCategory,
-         variant: ExerciseVariant? = nil,
+         variants: [ExerciseVariant] = [],
          sets: [ExerciseSet] = [],
          order: Int = 0,
+         restTime: Int = 60,
          notes: String? = nil) {
         self.id = id
         self.workoutId = workoutId
         self.name = name
         self.category = category
-        self.variant = variant
+        self.variants = variants
         self.sets = sets
         self.order = order
+        self.restTime = restTime
         self.notes = notes
     }
 }
@@ -217,9 +220,10 @@ struct Exercise: Identifiable, Codable {
 struct ExerciseSet: Identifiable, Codable, Equatable {
     let id: String
     let exerciseId: String
-    let reps: Int
-    let weight: Double
-    let restTime: Int // in seconds
+    var reps: Int
+    var weight: Double
+    var restTime: Int // in seconds
+    var rpe: Int?
     let completed: Bool
     let order: Int
     
@@ -228,6 +232,7 @@ struct ExerciseSet: Identifiable, Codable, Equatable {
          reps: Int,
          weight: Double = 0,
          restTime: Int = 60,
+          rpe: Int? = nil,
          completed: Bool = false,
          order: Int = 0) {
         self.id = id
@@ -235,6 +240,7 @@ struct ExerciseSet: Identifiable, Codable, Equatable {
         self.reps = reps
         self.weight = weight
         self.restTime = restTime
+        self.rpe = rpe
         self.completed = completed
         self.order = order
     }
@@ -456,7 +462,7 @@ extension Exercise {
         self.name = data["name"] as? String ?? ""
         self.muscleGroup = data["muscleGroup"] as? String
         self.category = ExerciseCategory(rawValue: data["category"] as? String ?? "") ?? .other
-        self.variant = ExerciseVariant(rawValue: data["variant"] as? String ?? "")
+        self.variants = [] // TODO: map from array when Firebase integration is enabled
         self.order = data["order"] as? Int ?? 0
         self.imageUrl = data["imageUrl"] as? String
         self.defaultRestSec = data["defaultRestSec"] as? Int

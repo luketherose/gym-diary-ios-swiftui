@@ -184,12 +184,11 @@ struct WorkoutSectionView: View {
             if section.workouts.isEmpty {
                 EmptyWorkoutSectionView()
             } else {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: DesignSystem.Spacing.medium), count: 2), spacing: DesignSystem.Spacing.medium) {
+                VStack(spacing: DesignSystem.Spacing.medium) {
                     ForEach(section.workouts.indices, id: \.self) { workoutIndex in
-                        WorkoutCard(workout: section.workouts[workoutIndex])
-                            .onDrag {
-                                NSItemProvider(object: "\(workoutIndex)" as NSString)
-                            }
+                        WorkoutCard(workout: $section.workouts[workoutIndex])
+                            .frame(maxWidth: .infinity)
+                            .onDrag { NSItemProvider(object: "\(workoutIndex)" as NSString) }
                             .onDrop(of: [.text], delegate: WorkoutDropDelegate(
                                 workoutIndex: workoutIndex,
                                 section: $section,
@@ -574,7 +573,7 @@ struct CreateWorkoutForSectionView: View {
 
 // MARK: - Workout Card
 struct WorkoutCard: View {
-    let workout: Workout
+    @Binding var workout: Workout
     @State private var showingWorkoutDetails = false
     @Environment(\.colorScheme) private var colorScheme
     
@@ -622,24 +621,14 @@ struct WorkoutCard: View {
                         .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
                         .lineLimit(2)
                     
-                    HStack {
-                        if let lastExecuted = workout.lastExecuted {
-                            Text("Last: \(lastExecuted, style: .date)")
-                                .font(.caption)
-                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                        } else {
-                            Text("Never executed")
-                                .font(.caption)
-                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                        }
-                        
-                        Spacer()
-                        
-                        // Small indicator for workout type
-                        GradientBadge(
-                            text: workout.exercises.count > 0 ? workoutIcon.displayName : "Empty",
-                            gradient: LinearGradient(colors: [workoutColor.color, workoutColor.color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        )
+                    if let lastExecuted = workout.lastExecuted {
+                        Text("Last: \(lastExecuted, style: .date)")
+                            .font(.caption)
+                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                    } else {
+                        Text("Never executed")
+                            .font(.caption)
+                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
                     }
                 }
                 .padding(.horizontal, DesignSystem.Spacing.large)
@@ -673,16 +662,20 @@ struct WorkoutCard: View {
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingWorkoutDetails) {
-            WorkoutDetailView(workout: workout)
+            WorkoutDetailView(workout: $workout)
         }
     }
 }
 
 // MARK: - Workout Detail View
 struct WorkoutDetailView: View {
-    let workout: Workout
+    @Binding var workout: Workout
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @State private var showingAddExercise = false
+    @State private var showingEditWorkout = false
+    @State private var showingEditExercise = false
+    @State private var editingExerciseIndex: Int? = nil
     
     private var workoutIcon: WorkoutIcon {
         WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? WorkoutIcon.randomIcon()
@@ -723,6 +716,11 @@ struct WorkoutDetailView: View {
                         
                         Spacer()
                         
+                        Button("Edit") {
+                            showingEditWorkout = true
+                        }
+                        .foregroundColor(DesignSystem.Colors.primary)
+                        
                         Button("Close") {
                             dismiss()
                         }
@@ -730,17 +728,7 @@ struct WorkoutDetailView: View {
                     }
                     .padding(DesignSystem.Spacing.large)
                     
-                    // Exercises List
-                    ScrollView {
-                        LazyVStack(spacing: DesignSystem.Spacing.medium) {
-                            ForEach(workout.exercises) { exercise in
-                                CardContainer {
-                                    ExerciseDetailRow(exercise: exercise)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, DesignSystem.Spacing.large)
-                    }
+                    ExercisesListView(workout: $workout)
                     
                     // Start Workout Button
                     GradientButton(
@@ -755,6 +743,91 @@ struct WorkoutDetailView: View {
                 }
             }
         }
+        .sheet(isPresented: $showingAddExercise) {
+            AddExerciseView { newExercise in
+                workout.exercises.append(newExercise)
+            }
+        }
+        .sheet(isPresented: $showingEditWorkout) {
+            EditWorkoutView(workout: $workout)
+        }
+        // Placeholder for future edit sheet if needed
+    }
+}
+// SetEditorRow moved to Features/Workouts/Views/SetEditorRow.swift
+
+// MARK: - Add Exercise Sheet
+extension WorkoutDetailView {
+    // move state inside main struct - allowed as computed via backing storage
+}
+
+// MARK: - Edit Workout View
+struct EditWorkoutView: View {
+    @Binding var workout: Workout
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var tempName: String = ""
+    @State private var tempChip: String = ""
+    @State private var selectedIcon: WorkoutIcon = WorkoutIcon.allIcons.first ?? WorkoutIcon.randomIcon()
+    @State private var selectedColor: WorkoutColor = WorkoutColor.allColors.first ?? WorkoutColor.randomColor()
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                DesignSystem.Colors.background(for: colorScheme).ignoresSafeArea()
+                ScrollView {
+                    VStack(spacing: DesignSystem.Spacing.large) {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                            Text("Workout Name")
+                                .font(.headline)
+                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                            TextField("Enter workout name", text: $tempName)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .background(
+                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                        .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
+                                )
+                        }
+                        
+                        WorkoutIconColorSelector(selectedIcon: $selectedIcon, selectedColor: $selectedColor)
+                        
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                            Text("Chip Text")
+                                .font(.headline)
+                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                            TextField("e.g., Push, Pull, Legs...", text: $tempChip)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .background(
+                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                        .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
+                                )
+                        }
+                    }
+                    .padding(DesignSystem.Spacing.large)
+                }
+            }
+            .navigationTitle("Edit Workout")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .navigationBarTrailing) { Button("Save") { save() }.disabled(tempName.isEmpty) }
+            }
+        }
+        .onAppear { load() }
+    }
+    
+    private func load() {
+        tempName = workout.name
+        tempChip = workout.chipText
+        selectedIcon = WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? WorkoutIcon.randomIcon()
+        selectedColor = WorkoutColor.allColors.first { $0.name == workout.colorName } ?? WorkoutColor.randomColor()
+    }
+    
+    private func save() {
+        workout.name = tempName
+        workout.chipText = tempChip
+        workout.iconName = selectedIcon.systemName
+        workout.colorName = selectedColor.name
+        dismiss()
     }
 }
 
@@ -765,26 +838,6 @@ struct ExerciseDetailRow: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-            HStack {
-                GradientIcon(
-                    systemName: "dumbbell.fill",
-                    gradient: DesignSystem.Gradients.primary,
-                    size: 20
-                )
-                
-                Text(exercise.name)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                
-                Spacer()
-                
-                GradientBadge(
-                    text: "\(exercise.sets.count) sets",
-                    gradient: DesignSystem.Gradients.primary
-                )
-            }
-            
             // Sets
             VStack(spacing: DesignSystem.Spacing.small) {
                 ForEach(exercise.sets.indices, id: \.self) { index in
@@ -805,6 +858,10 @@ struct ExerciseDetailRow: View {
                                 .font(.caption)
                                 .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
                         }
+                        
+                        Text("rest \(set.restTime)s")
+                            .font(.caption2)
+                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
                     }
                     .padding(.horizontal, DesignSystem.Spacing.small)
                     .padding(.vertical, 4)
@@ -817,3 +874,4 @@ struct ExerciseDetailRow: View {
         }
     }
 }
+

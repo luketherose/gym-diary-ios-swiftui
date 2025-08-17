@@ -44,6 +44,17 @@ struct PersonalInfoView: View {
                         PersonalInfoDangerSection(
                             showingDeleteAccount: $showingDeleteAccount
                         )
+
+                        // App Version footer
+                        VStack { 
+                            Text(appVersionString())
+                                .font(.footnote)
+                                .foregroundColor(Color(.systemGray))
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, DesignSystem.Spacing.large)
+                        .padding(.bottom, DesignSystem.Spacing.large)
                     }
                     .padding(DesignSystem.Spacing.large)
                 }
@@ -72,6 +83,13 @@ struct PersonalInfoView: View {
             }
         }
     }
+}
+
+// MARK: - Helpers
+private func appVersionString() -> String {
+    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
+    return "Version \(version) (\(build))"
 }
 
 // MARK: - Personal Info Sub-Components
