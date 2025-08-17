@@ -186,7 +186,15 @@ struct WorkoutSectionView: View {
             } else {
                 VStack(spacing: DesignSystem.Spacing.medium) {
                     ForEach(section.workouts.indices, id: \.self) { workoutIndex in
-                        WorkoutCard(workout: $section.workouts[workoutIndex])
+                        let idToDeleteLater = section.workouts[workoutIndex].id
+                        WorkoutCard(
+                            workout: $section.workouts[workoutIndex],
+                            onDelete: {
+                                if let idx = section.workouts.firstIndex(where: { $0.id == idToDeleteLater }) {
+                                    section.workouts.remove(at: idx)
+                                }
+                            }
+                        )
                             .frame(maxWidth: .infinity)
                             .onDrag { NSItemProvider(object: "\(workoutIndex)" as NSString) }
                             .onDrop(of: [.text], delegate: WorkoutDropDelegate(
@@ -574,6 +582,7 @@ struct CreateWorkoutForSectionView: View {
 // MARK: - Workout Card
 struct WorkoutCard: View {
     @Binding var workout: Workout
+    var onDelete: (() -> Void)? = nil
     @State private var showingWorkoutDetails = false
     @Environment(\.colorScheme) private var colorScheme
     
@@ -662,7 +671,7 @@ struct WorkoutCard: View {
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingWorkoutDetails) {
-            WorkoutDetailView(workout: $workout)
+            WorkoutDetailView(workout: $workout, onDelete: onDelete)
         }
     }
 }
@@ -670,12 +679,14 @@ struct WorkoutCard: View {
 // MARK: - Workout Detail View
 struct WorkoutDetailView: View {
     @Binding var workout: Workout
+    var onDelete: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingAddExercise = false
     @State private var showingEditWorkout = false
     @State private var showingEditExercise = false
     @State private var editingExerciseIndex: Int? = nil
+    @State private var confirmDelete = false
     
     private var workoutIcon: WorkoutIcon {
         WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? WorkoutIcon.randomIcon()
@@ -721,6 +732,19 @@ struct WorkoutDetailView: View {
                         }
                         .foregroundColor(DesignSystem.Colors.primary)
                         
+                        Button(action: { confirmDelete = true }) {
+                            Image(systemName: "trash")
+                        }
+                        .foregroundColor(.red)
+                        .padding(.horizontal, 8)
+                        .alert("sicuro di voler cancellare il workout?", isPresented: $confirmDelete) {
+                            Button("Cancel", role: .cancel) {}
+                            Button("Delete", role: .destructive) {
+                                onDelete?()
+                                dismiss()
+                            }
+                        }
+
                         Button("Close") {
                             dismiss()
                         }
@@ -761,86 +785,6 @@ extension WorkoutDetailView {
     // move state inside main struct - allowed as computed via backing storage
 }
 
-// MARK: - Edit Exercise View
-struct EditExerciseView: View {
-    @Binding var exercise: Exercise
-    let allowed: [ExerciseVariant]
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var tempName: String = ""
-    @State private var selectedVariants: Set<ExerciseVariant> = []
-    @State private var tempNotes: String = ""
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: DesignSystem.Spacing.large) {
-                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                        Text("Exercise Name")
-                            .font(.headline)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        TextField("Name", text: $tempName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                    }
-                    
-                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                        Text("Variants")
-                            .font(.headline)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(allowed, id: \.self) { v in
-                                    let isSel = selectedVariants.contains(v)
-                                    Button(action: {
-                                        if isSel { selectedVariants.remove(v) } else { selectedVariants.insert(v) }
-                                    }) {
-                                        Text(v.displayName)
-                                            .foregroundColor(isSel ? .white : DesignSystem.Colors.textPrimary(for: colorScheme))
-                                            .padding(8)
-                                            .background(RoundedRectangle(cornerRadius: 8).fill(isSel ? DesignSystem.Colors.primary : Color(.systemGray5)))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                        Text("Notes")
-                            .font(.headline)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        TextEditor(text: $tempNotes)
-                            .frame(minHeight: 100)
-                            .padding(8)
-                            .background(
-                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                    .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                            )
-                    }
-                }
-                .padding(DesignSystem.Spacing.large)
-            }
-            .navigationTitle("Edit Exercise")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .navigationBarTrailing) { Button("Save") { save() }.disabled(tempName.isEmpty) }
-            }
-        }
-        .onAppear { load() }
-    }
-    
-    private func load() {
-        tempName = exercise.name
-        selectedVariants = Set(exercise.variants)
-        tempNotes = exercise.notes ?? ""
-    }
-    
-    private func save() {
-        exercise.name = tempName
-        exercise.variants = Array(selectedVariants)
-        exercise.notes = tempNotes.isEmpty ? nil : tempNotes
-        dismiss()
-    }
-}
 // MARK: - Edit Workout View
 struct EditWorkoutView: View {
     @Binding var workout: Workout
