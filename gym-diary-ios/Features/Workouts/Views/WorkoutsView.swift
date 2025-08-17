@@ -114,6 +114,11 @@ struct WorkoutsView: View {
                                         moveWorkout(fromSection: fromSection, fromIndex: fromIndex, toSection: toSection, toIndex: toIndex)
                                     }
                                 )
+                                .onDrag { NSItemProvider(object: "section:\(sectionIndex)" as NSString) }
+                                .onDrop(of: [.text], delegate: SectionDropDelegate(
+                                    toSectionIndex: sectionIndex,
+                                    onSectionMoved: { from, to in moveSection(from: from, to: to) }
+                                ))
                             }
                         }
                         .padding(.horizontal, DesignSystem.Spacing.large)
@@ -138,9 +143,18 @@ struct WorkoutsView: View {
         guard sections.indices.contains(fromSection),
               sections.indices.contains(toSection),
               sections[fromSection].workouts.indices.contains(fromIndex) else { return }
+        // Restrict reordering within the same section only
+        guard fromSection == toSection else { return }
         let workout = sections[fromSection].workouts.remove(at: fromIndex)
         let insertionIndex = min(toIndex, sections[toSection].workouts.count)
         sections[toSection].workouts.insert(workout, at: insertionIndex)
+    }
+
+    private func moveSection(from: Int, to: Int) {
+        guard sections.indices.contains(from), sections.indices.contains(to) else { return }
+        let sectionItem = sections.remove(at: from)
+        let insertionIndex = min(to, sections.count)
+        sections.insert(sectionItem, at: insertionIndex)
     }
     
     private func addNewSection() {
@@ -278,6 +292,29 @@ struct WorkoutDropDelegate: DropDelegate {
     func dropUpdated(info: DropInfo) -> DropProposal? {
         DropProposal(operation: .move)
     }
+}
+
+// MARK: - Section Drop Delegate (reorder sections)
+struct SectionDropDelegate: DropDelegate {
+    let toSectionIndex: Int
+    let onSectionMoved: (_ from: Int, _ to: Int) -> Void
+    
+    func performDrop(info: DropInfo) -> Bool {
+        guard let itemProvider = info.itemProviders(for: [.text]).first else { return false }
+        itemProvider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { (data, _) in
+            DispatchQueue.main.async {
+                guard let data = data as? Data,
+                      let payload = String(data: data, encoding: .utf8) else { return }
+                // Expecting format "section:index"
+                if payload.hasPrefix("section:"), let from = Int(payload.replacingOccurrences(of: "section:", with: "")) {
+                    onSectionMoved(from, toSectionIndex)
+                }
+            }
+        }
+        return true
+    }
+    
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
 }
 
 // MARK: - Workout Icon and Color Selector
