@@ -335,9 +335,10 @@ struct Session: Identifiable, Codable {
     let id: String
     let userId: String
     let workoutId: String
-    let status: SessionStatus
-    let startedAt: Date?
-    let completedAt: Date?
+    var status: SessionStatus // Changed from let to var
+    var startedAt: Date? // Changed from let to var
+    var completedAt: Date? // Changed from let to var
+    var executionSeconds: Int? // Changed from let to var
     let exercises: [SessionExercise]
     let circuits: [SessionCircuit] // NEW: Array of session circuits
     let notes: String?

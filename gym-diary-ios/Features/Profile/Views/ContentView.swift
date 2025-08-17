@@ -9,23 +9,40 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var isDarkTheme = true
+    @State private var selectedTab = 0
+    @StateObject private var sessionManager = SessionManager.shared
     
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             WorkoutsView()
                 .tabItem {
                     Image(systemName: "dumbbell.fill")
                     Text("Workouts")
                 }
+                .tag(0)
+            
+            SessionsView()
+                .tabItem {
+                    Image(systemName: "timer")
+                    Text("Sessions")
+                }
+                .tag(1)
             
             ProfileView(isDarkTheme: $isDarkTheme)
                 .tabItem {
                     Image(systemName: "person.circle.fill")
                     Text("Profile")
                 }
+                .tag(2)
         }
         .accentColor(.blue)
         .preferredColorScheme(isDarkTheme ? .dark : .light)
+        .onChange(of: sessionManager.shouldNavigateToSessions) { _, shouldNavigate in
+            if shouldNavigate {
+                selectedTab = 1
+                sessionManager.shouldNavigateToSessions = false
+            }
+        }
     }
 }
 

@@ -827,6 +827,7 @@ struct WorkoutDetailView: View {
     @State private var showingEditExercise = false
     @State private var editingExerciseIndex: Int? = nil
     @State private var confirmDelete = false
+    @State private var shouldNavigateToSessions = false
     
     private var workoutIcon: WorkoutIcon {
         WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? 
@@ -901,8 +902,7 @@ struct WorkoutDetailView: View {
                         title: "Start Workout",
                         gradient: LinearGradient(colors: [workoutColor.color, workoutColor.color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
                     ) {
-                        // Start workout action
-                        dismiss()
+                        startWorkoutSession()
                     }
                     .padding(.horizontal, DesignSystem.Spacing.large)
                     .padding(.bottom, DesignSystem.Spacing.large)
@@ -918,6 +918,11 @@ struct WorkoutDetailView: View {
             EditWorkoutView(workout: $workout)
         }
         // Placeholder for future edit sheet if needed
+    }
+    
+    private func startWorkoutSession() {
+        SessionManager.shared.startSession(from: workout)
+        dismiss()
     }
 }
 // SetEditorRow moved to Features/Workouts/Views/SetEditorRow.swift
