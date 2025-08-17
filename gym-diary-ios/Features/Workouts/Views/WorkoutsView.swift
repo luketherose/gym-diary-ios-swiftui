@@ -1,123 +1,82 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+// MARK: - Drag State
+enum DragState: Equatable {
+    case none
+    case dragging
+    case overSection(Int)
+    case overWorkout(section: Int, index: Int)
+}
+
 // MARK: - Workouts View
 struct WorkoutsView: View {
     @State private var sections: [WorkoutSection] = [
-        WorkoutSection(userId: "user123", name: "Push/Pull/Legs", workouts: [
-            Workout(userId: "user123", name: "Push Day", exercises: [
-                Exercise(workoutId: "workout1", name: "Bench Press", category: .barbell, sets: [
-                    ExerciseSet(exerciseId: "exercise1", reps: 8, weight: 80),
-                    ExerciseSet(exerciseId: "exercise1", reps: 8, weight: 80),
-                    ExerciseSet(exerciseId: "exercise1", reps: 6, weight: 85)
-                ]),
-                Exercise(workoutId: "workout1", name: "Overhead Press", category: .barbell, sets: [
-                    ExerciseSet(exerciseId: "exercise2", reps: 10, weight: 50),
-                    ExerciseSet(exerciseId: "exercise2", reps: 10, weight: 50),
-                    ExerciseSet(exerciseId: "exercise2", reps: 8, weight: 55)
-                ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -2, to: Date()), sectionId: "section1", iconName: "figure.strengthtraining.traditional", colorName: "Red", chipText: "Push"),
-            Workout(userId: "user123", name: "Pull Day", exercises: [
-                Exercise(workoutId: "workout2", name: "Deadlift", category: .barbell, sets: [
-                    ExerciseSet(exerciseId: "exercise3", reps: 5, weight: 120),
-                    ExerciseSet(exerciseId: "exercise3", reps: 5, weight: 120),
-                    ExerciseSet(exerciseId: "exercise3", reps: 3, weight: 140)
-                ]),
-                Exercise(workoutId: "workout2", name: "Pull-ups", category: .bodyweight, sets: [
-                    ExerciseSet(exerciseId: "exercise4", reps: 8, weight: 0),
-                    ExerciseSet(exerciseId: "exercise4", reps: 6, weight: 0),
-                    ExerciseSet(exerciseId: "exercise4", reps: 6, weight: 0)
-                ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -2, to: Date()), sectionId: "section1", iconName: "figure.strengthtraining.traditional", colorName: "Blue", chipText: "Pull"),
-            Workout(userId: "user123", name: "Legs Day", exercises: [
-                Exercise(workoutId: "workout3", name: "Squat", category: .barbell, sets: [
-                    ExerciseSet(exerciseId: "exercise5", reps: 8, weight: 100),
-                    ExerciseSet(exerciseId: "exercise5", reps: 8, weight: 100),
-                    ExerciseSet(exerciseId: "exercise5", reps: 6, weight: 110)
-                ]),
-                Exercise(workoutId: "workout3", name: "Romanian Deadlift", category: .barbell, sets: [
-                    ExerciseSet(exerciseId: "exercise6", reps: 10, weight: 80),
-                    ExerciseSet(exerciseId: "exercise6", reps: 10, weight: 80),
-                    ExerciseSet(exerciseId: "exercise6", reps: 8, weight: 85)
-                ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -8, to: Date()), sectionId: "section1", iconName: "figure.strengthtraining.traditional", colorName: "Green", chipText: "Legs")
-        ]),
-        WorkoutSection(userId: "user123", name: "Upper Body", workouts: [
-            Workout(userId: "user123", name: "Upper Body Circuit", exercises: [
-                Exercise(workoutId: "workout4", name: "Push-ups", category: .bodyweight, sets: [
-                    ExerciseSet(exerciseId: "exercise7", reps: 15, weight: 0),
-                    ExerciseSet(exerciseId: "exercise7", reps: 12, weight: 0),
-                    ExerciseSet(exerciseId: "exercise7", reps: 10, weight: 0)
-                ]),
-                Exercise(workoutId: "workout4", name: "Dips", category: .bodyweight, sets: [
-                    ExerciseSet(exerciseId: "exercise8", reps: 10, weight: 0),
-                    ExerciseSet(exerciseId: "exercise8", reps: 8, weight: 0),
-                    ExerciseSet(exerciseId: "exercise8", reps: 6, weight: 0)
-                ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -1, to: Date()), sectionId: "section2", iconName: "figure.strengthtraining.functional", colorName: "Orange", chipText: "Upper")
+        WorkoutSection(userId: "user123", name: "Strength", workouts: [
+            Workout(userId: "user123", name: "Push Day", exercises: [], iconName: "dumbbell", colorName: "blue", chipText: "Push"),
+            Workout(userId: "user123", name: "Pull Day", exercises: [], iconName: "dumbbell", colorName: "green", chipText: "Pull")
         ]),
         WorkoutSection(userId: "user123", name: "Cardio", workouts: [
-            Workout(userId: "user123", name: "HIIT Cardio", exercises: [
-                Exercise(workoutId: "workout5", name: "Burpees", category: .bodyweight, sets: [
-                    ExerciseSet(exerciseId: "exercise9", reps: 20, weight: 0),
-                    ExerciseSet(exerciseId: "exercise9", reps: 20, weight: 0),
-                    ExerciseSet(exerciseId: "exercise9", reps: 20, weight: 0)
-                ]),
-                Exercise(workoutId: "workout5", name: "Mountain Climbers", category: .bodyweight, sets: [
-                    ExerciseSet(exerciseId: "exercise10", reps: 25, weight: 0),
-                    ExerciseSet(exerciseId: "exercise10", reps: 25, weight: 0),
-                    ExerciseSet(exerciseId: "exercise10", reps: 25, weight: 0)
-                ])
-            ], lastExecuted: Calendar.current.date(byAdding: .day, value: -3, to: Date()), sectionId: "section3", iconName: "figure.running", colorName: "Purple", chipText: "Cardio")
+            Workout(userId: "user123", name: "Running", exercises: [], iconName: "figure.running", colorName: "red", chipText: "Cardio")
         ])
     ]
-    
     @State private var showingCreateWorkout = false
-    @State private var showingAddSection = false
     @State private var newSectionName = ""
-    @Environment(\.colorScheme) private var colorScheme
+    @State private var dragState: DragState = .none
     
     var body: some View {
         NavigationView {
             ZStack {
-                DesignSystem.Colors.background(for: colorScheme)
+                DesignSystem.Colors.background(for: .dark)
                     .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
+                VStack(spacing: DesignSystem.Spacing.large) {
                     // Header
                     HStack {
                         Text("Workouts")
                             .font(.largeTitle)
                             .fontWeight(.bold)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                            .foregroundColor(DesignSystem.Colors.textPrimary(for: .dark))
                         
                         Spacer()
                         
                         Button(action: {
-                            showingAddSection = true
+                            showingCreateWorkout = true
                         }) {
                             Image(systemName: "plus.circle.fill")
-                                .font(.title2)
+                                .font(.title)
                                 .foregroundColor(DesignSystem.Colors.primary)
                         }
                     }
-                    .padding(DesignSystem.Spacing.large)
+                    .padding(.horizontal, DesignSystem.Spacing.large)
+                    .padding(.top, DesignSystem.Spacing.large)
                     
-                    // Sections List
+                    // Sections
                     ScrollView {
                         LazyVStack(spacing: DesignSystem.Spacing.large) {
                             ForEach(sections.indices, id: \.self) { sectionIndex in
                                 WorkoutSectionView(
-                                    sectionIndex: sectionIndex,
                                     section: $sections[sectionIndex],
-                                    onWorkoutDropped: { fromSection, fromIndex, toSection, toIndex in
-                                        moveWorkout(fromSection: fromSection, fromIndex: fromIndex, toSection: toSection, toIndex: toIndex)
-                                    }
+                                    sectionIndex: sectionIndex,
+                                    onWorkoutMoved: { fromSection, fromIndex, toSection, toIndex in
+                                        moveWorkout(from: fromSection, from: fromIndex, to: toSection, to: toIndex)
+                                    },
+                                    onWorkoutDeleted: { workoutId in
+                                        deleteWorkout(workoutId: workoutId)
+                                    },
+                                    dragState: $dragState
                                 )
-                                .onDrag { NSItemProvider(object: "section:\(sectionIndex)" as NSString) }
-                                .onDrop(of: [.text], delegate: SectionDropDelegate(
+                                .onDrag {
+                                    dragState = .dragging
+                                    return NSItemProvider(object: "section:\(sectionIndex)" as NSString)
+                                }
+                                .onDrop(of: [.plainText], delegate: SectionDropDelegate(
                                     toSectionIndex: sectionIndex,
-                                    onSectionMoved: { from, to in moveSection(from: from, to: to) }
+                                    onSectionMoved: { from, to in moveSection(from: from, to: to) },
+                                    onWorkoutMovedToSection: { fromSection, fromIndex, toSection, toIndex in
+                                        moveWorkout(from: fromSection, from: fromIndex, to: toSection, to: toIndex)
+                                    },
+                                    dragState: $dragState
                                 ))
                             }
                         }
@@ -126,58 +85,43 @@ struct WorkoutsView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingCreateWorkout) {
-                CreateWorkoutView(sections: $sections)
-            }
-            .alert("Add New Section", isPresented: $showingAddSection) {
-                TextField("Section name", text: $newSectionName)
-                Button("Cancel", role: .cancel) { }
-                Button("Add") {
-                    addNewSection()
-                }
-            }
+        }
+        .sheet(isPresented: $showingCreateWorkout) {
+            CreateWorkoutView(sections: $sections)
         }
     }
     
-    private func moveWorkout(fromSection: Int, fromIndex: Int, toSection: Int, toIndex: Int) {
-        guard sections.indices.contains(fromSection),
-              sections.indices.contains(toSection),
-              sections[fromSection].workouts.indices.contains(fromIndex) else { return }
-        // Restrict reordering within the same section only
-        guard fromSection == toSection else { return }
-        let workout = sections[fromSection].workouts.remove(at: fromIndex)
-        let insertionIndex = min(toIndex, sections[toSection].workouts.count)
-        sections[toSection].workouts.insert(workout, at: insertionIndex)
-    }
-
-    private func moveSection(from: Int, to: Int) {
-        guard sections.indices.contains(from), sections.indices.contains(to) else { return }
-        let sectionItem = sections.remove(at: from)
-        let insertionIndex = min(to, sections.count)
-        sections.insert(sectionItem, at: insertionIndex)
+    private func moveSection(from fromIndex: Int, to toIndex: Int) {
+        sections.move(fromOffsets: IndexSet(integer: fromIndex), toOffset: toIndex)
     }
     
-    private func addNewSection() {
-        guard !newSectionName.isEmpty else { return }
+    private func moveWorkout(from fromSectionIndex: Int, from fromWorkoutIndex: Int, to toSectionIndex: Int, to toWorkoutIndex: Int) {
+        // Allow cross-section moves
+        let workout = sections[fromSectionIndex].workouts[fromWorkoutIndex]
+        sections[fromSectionIndex].workouts.remove(at: fromWorkoutIndex)
         
-        let newSection = WorkoutSection(
-            userId: "user123",
-            name: newSectionName,
-            workouts: []
-        )
-        
-        sections.append(newSection)
-        newSectionName = ""
+        // Insert at the specified position in the target section
+        let insertIndex = min(toWorkoutIndex, sections[toSectionIndex].workouts.count)
+        sections[toSectionIndex].workouts.insert(workout, at: insertIndex)
+    }
+    
+    private func deleteWorkout(workoutId: String) {
+        for sectionIndex in sections.indices {
+            if let workoutIndex = sections[sectionIndex].workouts.firstIndex(where: { $0.id == workoutId }) {
+                sections[sectionIndex].workouts.remove(at: workoutIndex)
+                return
+            }
+        }
     }
 }
 
 // MARK: - Workout Section View
 struct WorkoutSectionView: View {
-    let sectionIndex: Int
     @Binding var section: WorkoutSection
-    let onWorkoutDropped: (_ fromSection: Int, _ fromIndex: Int, _ toSection: Int, _ toIndex: Int) -> Void
-    
-    @State private var showingCreateWorkout = false
+    let sectionIndex: Int
+    let onWorkoutMoved: (Int, Int, Int, Int) -> Void
+    let onWorkoutDeleted: (String) -> Void
+    @Binding var dragState: DragState
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
@@ -186,19 +130,21 @@ struct WorkoutSectionView: View {
             HStack {
                 Text(section.name)
                     .font(.title2)
-                    .fontWeight(.semibold)
+                    .fontWeight(.bold)
                     .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
                 
                 Spacer()
                 
-                                        Button(action: {
-                            showingCreateWorkout = true
-                        }) {
-                            Image(systemName: "plus.circle")
-                                .font(.title3)
-                                .foregroundColor(DesignSystem.Colors.primary)
-                        }
+                Button(action: {
+                    // Add workout to this section
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundColor(DesignSystem.Colors.primary)
+                        .font(.title2)
+                }
             }
+            .padding(.horizontal, DesignSystem.Spacing.medium)
+            .padding(.vertical, DesignSystem.Spacing.small)
             
             // Workouts Grid
             if section.workouts.isEmpty {
@@ -206,23 +152,52 @@ struct WorkoutSectionView: View {
             } else {
                 VStack(spacing: DesignSystem.Spacing.medium) {
                     ForEach(section.workouts.indices, id: \.self) { workoutIndex in
-                        let idToDeleteLater = section.workouts[workoutIndex].id
-                        WorkoutCard(
-                            workout: $section.workouts[workoutIndex],
-                            onDelete: {
-                                if let idx = section.workouts.firstIndex(where: { $0.id == idToDeleteLater }) {
-                                    section.workouts.remove(at: idx)
-                                }
+                        VStack(spacing: 0) {
+                            // Drop indicator above workout
+                            if case .overWorkout(let dragSection, let dragIndex) = dragState,
+                               dragSection == sectionIndex && dragIndex == workoutIndex {
+                                Rectangle()
+                                    .fill(DesignSystem.Colors.primary)
+                                    .frame(height: 3)
+                                    .padding(.horizontal, DesignSystem.Spacing.small)
+                                    .transition(.scale.combined(with: .opacity))
                             }
-                        )
+                            
+                            WorkoutCard(
+                                workout: $section.workouts[workoutIndex],
+                                onDelete: {
+                                    onWorkoutDeleted(section.workouts[workoutIndex].id)
+                                }
+                            )
                             .frame(maxWidth: .infinity)
-                            .onDrag { NSItemProvider(object: "\(sectionIndex):\(workoutIndex)" as NSString) }
-                            .onDrop(of: [.text], delegate: WorkoutDropDelegate(
+                            .onDrag {
+                                dragState = .dragging
+                                let provider = NSItemProvider()
+                                provider.registerDataRepresentation(forTypeIdentifier: UTType.plainText.identifier, visibility: .all) { completion in
+                                    let string = "\(sectionIndex):\(workoutIndex)"
+                                    completion(Data(string.utf8), nil)
+                                    return nil
+                                }
+                                return provider
+                            }
+                            .onDrop(of: [.plainText], delegate: WorkoutDropDelegate(
                                 toSectionIndex: sectionIndex,
                                 toWorkoutIndex: workoutIndex,
                                 section: $section,
-                                onWorkoutDropped: onWorkoutDropped
+                                onWorkoutDropped: onWorkoutMoved,
+                                dragState: $dragState
                             ))
+                        }
+                    }
+                    
+                    // Drop indicator at the end of section
+                    if case .overWorkout(let dragSection, let dragIndex) = dragState,
+                       dragSection == sectionIndex && dragIndex == section.workouts.count {
+                        Rectangle()
+                            .fill(DesignSystem.Colors.primary)
+                            .frame(height: 3)
+                            .padding(.horizontal, DesignSystem.Spacing.small)
+                            .transition(.scale.combined(with: .opacity))
                     }
                 }
             }
@@ -231,10 +206,24 @@ struct WorkoutSectionView: View {
         .background(
             RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.large)
                 .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.large)
+                        .stroke(dragState == .overSection(sectionIndex) ? DesignSystem.Colors.primary : Color.clear, lineWidth: 2)
+                )
         )
-        .sheet(isPresented: $showingCreateWorkout) {
-            CreateWorkoutForSectionView(section: $section)
-        }
+        .scaleEffect(dragState == .overSection(sectionIndex) ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: dragState)
+        .onDrop(of: [.plainText], delegate: SectionDropDelegate(
+            toSectionIndex: sectionIndex,
+            onSectionMoved: { from, to in
+                // This is for section reordering, not workout reordering
+                // Handled in WorkoutsView
+            },
+            onWorkoutMovedToSection: { fromSection, fromIndex, toSection, toIndex in
+                onWorkoutMoved(fromSection, fromIndex, toSection, toIndex)
+            },
+            dragState: $dragState
+        ))
     }
 }
 
@@ -271,11 +260,12 @@ struct WorkoutDropDelegate: DropDelegate {
     let toSectionIndex: Int
     let toWorkoutIndex: Int
     @Binding var section: WorkoutSection
-    let onWorkoutDropped: (_ fromSection: Int, _ fromIndex: Int, _ toSection: Int, _ toIndex: Int) -> Void
+    let onWorkoutDropped: (Int, Int, Int, Int) -> Void
+    @Binding var dragState: DragState
     
     func performDrop(info: DropInfo) -> Bool {
-        guard let itemProvider = info.itemProviders(for: [.text]).first else { return false }
-        itemProvider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { (data, _) in
+        guard let itemProvider = info.itemProviders(for: [.plainText]).first else { return false }
+        itemProvider.loadItem(forTypeIdentifier: UTType.plainText.identifier, options: nil) { (data, _) in
             DispatchQueue.main.async {
                 guard let data = data as? Data,
                       let payload = String(data: data, encoding: .utf8) else { return }
@@ -284,13 +274,31 @@ struct WorkoutDropDelegate: DropDelegate {
                 if parts.count == 2, let fromSection = Int(parts[0]), let fromIndex = Int(parts[1]) {
                     onWorkoutDropped(fromSection, fromIndex, toSectionIndex, toWorkoutIndex)
                 }
+                dragState = .none
             }
         }
         return true
     }
     
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
+        return DropProposal(operation: .move)
+    }
+    
+    func dropEntered(info: DropInfo) {
+        // Visual feedback when entering drop zone
+        withAnimation(.easeInOut(duration: 0.2)) {
+            dragState = .overWorkout(section: toSectionIndex, index: toWorkoutIndex)
+        }
+    }
+    
+    func dropExited(info: DropInfo) {
+        // Visual feedback when exiting drop zone
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if case .overWorkout(let dragSection, let dragIndex) = dragState,
+               dragSection == toSectionIndex && dragIndex == toWorkoutIndex {
+                dragState = .dragging
+            }
+        }
     }
 }
 
@@ -298,23 +306,53 @@ struct WorkoutDropDelegate: DropDelegate {
 struct SectionDropDelegate: DropDelegate {
     let toSectionIndex: Int
     let onSectionMoved: (_ from: Int, _ to: Int) -> Void
+    let onWorkoutMovedToSection: (Int, Int, Int, Int) -> Void
+    @Binding var dragState: DragState
     
     func performDrop(info: DropInfo) -> Bool {
-        guard let itemProvider = info.itemProviders(for: [.text]).first else { return false }
-        itemProvider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { (data, _) in
+        guard let itemProvider = info.itemProviders(for: [.plainText]).first else { return false }
+        itemProvider.loadItem(forTypeIdentifier: UTType.plainText.identifier, options: nil) { (data, _) in
             DispatchQueue.main.async {
                 guard let data = data as? Data,
                       let payload = String(data: data, encoding: .utf8) else { return }
-                // Expecting format "section:index"
-                if payload.hasPrefix("section:"), let from = Int(payload.replacingOccurrences(of: "section:", with: "")) {
-                    onSectionMoved(from, toSectionIndex)
+                if payload.hasPrefix("section:") { // It's a section being dragged
+                    let components = payload.split(separator: ":").map(String.init)
+                    if components.count == 2, let fromIndex = Int(components[1]) {
+                        onSectionMoved(fromIndex, toSectionIndex)
+                    }
+                } else if payload.contains(":") { // It's a workout being dragged
+                    let components = payload.split(separator: ":").map(String.init)
+                    if components.count == 2,
+                       let fromSectionIndex = Int(components[0]),
+                       let fromWorkoutIndex = Int(components[1]) {
+                        // Drop workout at the end of this section
+                        onWorkoutMovedToSection(fromSectionIndex, fromWorkoutIndex, toSectionIndex, 0)
+                    }
                 }
+                dragState = .none
             }
         }
         return true
     }
     
     func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+    
+    func dropEntered(info: DropInfo) {
+        // Visual feedback when entering section drop zone
+        withAnimation(.easeInOut(duration: 0.2)) {
+            dragState = .overSection(toSectionIndex)
+        }
+    }
+    
+    func dropExited(info: DropInfo) {
+        // Visual feedback when exiting section drop zone
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if case .overSection(let dragSection) = dragState,
+               dragSection == toSectionIndex {
+                dragState = .dragging
+            }
+        }
+    }
 }
 
 // MARK: - Workout Icon and Color Selector
