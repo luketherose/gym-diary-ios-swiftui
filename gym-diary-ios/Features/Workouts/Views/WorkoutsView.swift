@@ -20,7 +20,7 @@ struct WorkoutsView: View {
             Workout(userId: "user123", name: "Running", exercises: [], iconName: "figure.running", colorName: "red", chipText: "Cardio")
         ])
     ]
-    @State private var showingCreateWorkout = false
+    @State private var showingCreateSection = false
     @State private var newSectionName = ""
     @State private var dragState: DragState = .none
     
@@ -41,7 +41,8 @@ struct WorkoutsView: View {
                         Spacer()
                         
                         Button(action: {
-                            showingCreateWorkout = true
+                            newSectionName = ""
+                            showingCreateSection = true
                         }) {
                             Image(systemName: "plus.circle.fill")
                                 .font(.title)
@@ -86,9 +87,28 @@ struct WorkoutsView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingCreateWorkout) {
-            CreateWorkoutView(sections: $sections)
+        .alert("Create New Section", isPresented: $showingCreateSection) {
+            TextField("Section Name", text: $newSectionName)
+            Button("Cancel", role: .cancel) {}
+            Button("Create") {
+                createSection()
+            }
+            .disabled(newSectionName.isEmpty)
+        } message: {
+            Text("Enter the name for your new section.")
         }
+    }
+    
+    private func createSection() {
+        guard !newSectionName.isEmpty else { return }
+        
+        let newSection = WorkoutSection(
+            userId: "user123",
+            name: newSectionName,
+            workouts: []
+        )
+        sections.append(newSection)
+        newSectionName = ""
     }
     
     private func moveSection(from fromIndex: Int, to toIndex: Int) {
@@ -123,6 +143,7 @@ struct WorkoutSectionView: View {
     let onWorkoutDeleted: (String) -> Void
     @Binding var dragState: DragState
     @Environment(\.colorScheme) private var colorScheme
+    @State private var showingCreateWorkout = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.medium) {
@@ -136,7 +157,7 @@ struct WorkoutSectionView: View {
                 Spacer()
                 
                 Button(action: {
-                    // Add workout to this section
+                    showingCreateWorkout = true
                 }) {
                     Image(systemName: "plus.circle.fill")
                         .foregroundColor(DesignSystem.Colors.primary)
@@ -199,6 +220,18 @@ struct WorkoutSectionView: View {
                             .padding(.horizontal, DesignSystem.Spacing.small)
                             .transition(.scale.combined(with: .opacity))
                     }
+                    
+                    // Drop area at the end of section for last position
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(height: 20)
+                        .onDrop(of: [.plainText], delegate: WorkoutDropDelegate(
+                            toSectionIndex: sectionIndex,
+                            toWorkoutIndex: section.workouts.count,
+                            section: $section,
+                            onWorkoutDropped: onWorkoutMoved,
+                            dragState: $dragState
+                        ))
                 }
             }
         }
@@ -224,6 +257,9 @@ struct WorkoutSectionView: View {
             },
             dragState: $dragState
         ))
+        .sheet(isPresented: $showingCreateWorkout) {
+            CreateWorkoutForSectionView(section: $section)
+        }
     }
 }
 
@@ -360,9 +396,16 @@ struct WorkoutIconColorSelector: View {
     @Binding var selectedIcon: WorkoutIcon
     @Binding var selectedColor: WorkoutColor
     @Environment(\.colorScheme) private var colorScheme
-    @State private var selectedCategory = "Strength"
+    @State private var selectedCategory: String
     
     private let categories = ["Strength", "Cardio", "Mobility"]
+    
+    init(selectedIcon: Binding<WorkoutIcon>, selectedColor: Binding<WorkoutColor>) {
+        self._selectedIcon = selectedIcon
+        self._selectedColor = selectedColor
+        // Initialize category based on the selected icon
+        self._selectedCategory = State(initialValue: selectedIcon.wrappedValue.category)
+    }
     
     var body: some View {
         VStack(spacing: DesignSystem.Spacing.large) {
@@ -379,9 +422,13 @@ struct WorkoutIconColorSelector: View {
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .onChange(of: selectedCategory) { oldValue, newValue in
-                    // Update selected icon to first icon in new category
-                    if let firstIcon = WorkoutIcon.icons(for: newValue).first {
-                        selectedIcon = firstIcon
+                    // Only change icon if current icon is not in the new category
+                    let iconsInNewCategory = WorkoutIcon.icons(for: newValue)
+                    if !iconsInNewCategory.contains(where: { $0.systemName == selectedIcon.systemName }) {
+                        // If current icon is not in new category, select first available
+                        if let firstIcon = iconsInNewCategory.first {
+                            selectedIcon = firstIcon
+                        }
                     }
                 }
             }
@@ -465,11 +512,11 @@ struct CreateWorkoutView: View {
     @Binding var sections: [WorkoutSection]
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
-                @State private var workoutName = ""
-            @State private var selectedSectionIndex = 0
-            @State private var selectedIcon = WorkoutIcon.allIcons.first ?? WorkoutIcon.randomIcon()
-            @State private var selectedColor = WorkoutColor.allColors.first ?? WorkoutColor.randomColor()
-            @State private var chipText = ""
+    @State private var workoutName = ""
+    @State private var selectedSectionIndex = 0
+    @State private var selectedIcon = WorkoutIcon(systemName: "dumbbell", displayName: "Dumbbell", category: "Strength")
+    @State private var selectedColor = WorkoutColor(color: .blue, name: "Blue", isDark: false)
+    @State private var chipText = ""
     
     var body: some View {
         NavigationView {
@@ -585,8 +632,8 @@ struct CreateWorkoutForSectionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @State private var workoutName = ""
-    @State private var selectedIcon = WorkoutIcon.allIcons.first ?? WorkoutIcon.randomIcon()
-    @State private var selectedColor = WorkoutColor.allColors.first ?? WorkoutColor.randomColor()
+    @State private var selectedIcon = WorkoutIcon(systemName: "dumbbell", displayName: "Dumbbell", category: "Strength")
+    @State private var selectedColor = WorkoutColor(color: .blue, name: "Blue", isDark: false)
     @State private var chipText = ""
     
     var body: some View {
@@ -601,7 +648,7 @@ struct CreateWorkoutForSectionView: View {
                         Button("Cancel") { dismiss() }
                             .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
                         Spacer()
-                        Text("Create Workout")
+                        Text("Create Workout in \(section.name)")
                             .font(.headline)
                             .fontWeight(.semibold)
                             .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
@@ -671,11 +718,13 @@ struct WorkoutCard: View {
     @Environment(\.colorScheme) private var colorScheme
     
     private var workoutIcon: WorkoutIcon {
-        WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? WorkoutIcon.randomIcon()
+        WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? 
+        WorkoutIcon(systemName: "dumbbell", displayName: "Dumbbell", category: "Strength")
     }
     
     private var workoutColor: WorkoutColor {
-        WorkoutColor.allColors.first { $0.name == workout.colorName } ?? WorkoutColor.randomColor()
+        WorkoutColor.allColors.first { $0.name == workout.colorName } ?? 
+        WorkoutColor(color: .blue, name: "Blue", isDark: false)
     }
     
     var body: some View {
@@ -773,11 +822,13 @@ struct WorkoutDetailView: View {
     @State private var confirmDelete = false
     
     private var workoutIcon: WorkoutIcon {
-        WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? WorkoutIcon.randomIcon()
+        WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? 
+        WorkoutIcon(systemName: "dumbbell", displayName: "Dumbbell", category: "Strength")
     }
     
     private var workoutColor: WorkoutColor {
-        WorkoutColor.allColors.first { $0.name == workout.colorName } ?? WorkoutColor.randomColor()
+        WorkoutColor.allColors.first { $0.name == workout.colorName } ?? 
+        WorkoutColor(color: .blue, name: "Blue", isDark: false)
     }
     
     var body: some View {
@@ -876,8 +927,8 @@ struct EditWorkoutView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var tempName: String = ""
     @State private var tempChip: String = ""
-    @State private var selectedIcon: WorkoutIcon = WorkoutIcon.allIcons.first ?? WorkoutIcon.randomIcon()
-    @State private var selectedColor: WorkoutColor = WorkoutColor.allColors.first ?? WorkoutColor.randomColor()
+    @State private var selectedIcon: WorkoutIcon = WorkoutIcon(systemName: "dumbbell", displayName: "Dumbbell", category: "Strength")
+    @State private var selectedColor: WorkoutColor = WorkoutColor(color: .blue, name: "Blue", isDark: false)
     
     var body: some View {
         NavigationView {
@@ -926,8 +977,10 @@ struct EditWorkoutView: View {
     private func load() {
         tempName = workout.name
         tempChip = workout.chipText
-        selectedIcon = WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? WorkoutIcon.randomIcon()
-        selectedColor = WorkoutColor.allColors.first { $0.name == workout.colorName } ?? WorkoutColor.randomColor()
+        selectedIcon = WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? 
+            WorkoutIcon(systemName: "dumbbell", displayName: "Dumbbell", category: "Strength")
+        selectedColor = WorkoutColor.allColors.first { $0.name == workout.colorName } ?? 
+            WorkoutColor(color: .blue, name: "Blue", isDark: false)
     }
     
     private func save() {

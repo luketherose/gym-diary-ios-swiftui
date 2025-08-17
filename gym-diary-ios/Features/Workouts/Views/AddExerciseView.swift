@@ -223,11 +223,11 @@ struct AddExerciseView: View {
                 }
             }
         }
-        .onChange(of: variantEnabled) { enabled in
-            if !enabled { selectedVariants.removeAll() }
+        .onChange(of: variantEnabled) { oldValue, newValue in
+            if !newValue { selectedVariants.removeAll() }
         }
-        .onChange(of: notesEnabled) { enabled in
-            if !enabled { note = "" }
+        .onChange(of: notesEnabled) { oldValue, newValue in
+            if !newValue { note = "" }
         }
     }
     

@@ -62,40 +62,32 @@ struct ProfileView: View {
     
     var body: some View {
         NavigationView {
-            ZStack {
-                DesignSystem.Colors.background(for: colorScheme)
-                    .ignoresSafeArea()
+            List {
+                // Account Section
+                ProfileAccountSection(showingPersonalInfo: $showingPersonalInfo)
+            
+                // General Settings Section
+                ProfileGeneralSection(
+                    isDarkTheme: $isDarkTheme,
+                    useKilograms: $useKilograms,
+                    defaultRestTime: $defaultRestTime,
+                    showingRestTimePicker: $showingRestTimePicker
+                )
+            
+                // Notifications Section
+                ProfileNotificationsSection(
+                    timerNotificationsEnabled: $timerNotificationsEnabled,
+                    soundsEnabled: $soundsEnabled
+                )
+            
+                // Information Section
+                ProfileInformationSection()
                 
-                ScrollView {
-                    VStack(spacing: DesignSystem.Spacing.large) {
-                        // Account Section
-                        ProfileAccountSection(showingPersonalInfo: $showingPersonalInfo)
+                // Version Section
+                ProfileVersionSection()
                 
-                        // General Settings Section
-                        ProfileGeneralSection(
-                            isDarkTheme: $isDarkTheme,
-                            useKilograms: $useKilograms,
-                            defaultRestTime: $defaultRestTime,
-                            showingRestTimePicker: $showingRestTimePicker
-                        )
-                
-                        // Notifications Section
-                        ProfileNotificationsSection(
-                            timerNotificationsEnabled: $timerNotificationsEnabled,
-                            soundsEnabled: $soundsEnabled
-                        )
-                
-                        // Information Section
-                        ProfileInformationSection()
-                        
-                        // Version Section
-                        ProfileVersionSection()
-                        
-                        // Support Section
-                        ProfileSupportSection()
-                    }
-                    .padding(DesignSystem.Spacing.large)
-                }
+                // Support Section
+                ProfileSupportSection()
             }
             .navigationTitle("Profile")
             .sheet(isPresented: $showingRestTimePicker) {
@@ -117,37 +109,35 @@ struct ProfileAccountSection: View {
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
-        CardContainer {
+        Section {
             Button(action: {
                 showingPersonalInfo = true
             }) {
                 HStack {
-                    GradientIcon(
-                        systemName: "person.circle.fill",
-                        gradient: DesignSystem.Gradients.primary,
-                        size: 50
-                    )
+                    Image(systemName: "person.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.blue)
+                        .frame(width: 50, height: 50)
                     
                     VStack(alignment: .leading, spacing: 4) {
                         Text("User Name")
-                            .font(.headline)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                            .font(.body)
+                            .foregroundColor(.primary)
                         Text("user@email.com")
-                            .font(.subheadline)
-                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                     
                     Spacer()
                     
-                    GradientIcon(
-                        systemName: "chevron.right",
-                        gradient: DesignSystem.Gradients.primary,
-                        size: 16
-                    )
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                .padding(.vertical, DesignSystem.Spacing.small)
             }
             .buttonStyle(PlainButtonStyle())
+        } header: {
+            Text("Account")
         }
     }
 }
@@ -160,92 +150,71 @@ struct ProfileGeneralSection: View {
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
-        CardContainer {
-            VStack(spacing: DesignSystem.Spacing.medium) {
+        Section {
+            Button(action: {
+                showingRestTimePicker = true
+            }) {
                 HStack {
-                    Text("General")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                    Image(systemName: "timer")
+                        .font(.body)
+                        .foregroundColor(.orange)
+                        .frame(width: 24, height: 24)
+                    
+                    Text("Default Rest Time")
+                        .foregroundColor(.primary)
+                    
                     Spacer()
-                }
-                
-                VStack(spacing: DesignSystem.Spacing.medium) {
-                    Button(action: {
-                        showingRestTimePicker = true
-                    }) {
-                        HStack {
-                            GradientIcon(
-                                systemName: "timer",
-                                gradient: DesignSystem.Gradients.secondary,
-                                size: 24
-                            )
-                            
-                            Text("Default Rest Time")
-                                .font(.body)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                            
-                            Spacer()
-                            
-                            Text("\(defaultRestTime) seconds")
-                                .font(.subheadline)
-                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                            
-                            GradientIcon(
-                                systemName: "chevron.right",
-                                gradient: DesignSystem.Gradients.primary,
-                                size: 16
-                            )
-                        }
-                        .padding(.vertical, 4)
-                    }
-                    .buttonStyle(PlainButtonStyle())
                     
-                    HStack {
-                        GradientIcon(
-                            systemName: "scalemass",
-                            gradient: DesignSystem.Gradients.success,
-                            size: 24
-                        )
-                        
-                        Text("Units")
-                            .font(.body)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        
-                        Spacer()
-                        
-                        Text(useKilograms ? "kg" : "lb")
-                            .font(.subheadline)
-                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                        
-                        Toggle("", isOn: $useKilograms)
-                            .labelsHidden()
-                    }
-                    .padding(.vertical, 4)
+                    Text("\(defaultRestTime) seconds")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     
-                    HStack {
-                        GradientIcon(
-                            systemName: "moon.fill",
-                            gradient: DesignSystem.Gradients.primary,
-                            size: 24
-                        )
-                        
-                        Text("Theme")
-                            .font(.body)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        
-                        Spacer()
-                        
-                        Text(isDarkTheme ? "Dark" : "Light")
-                            .font(.subheadline)
-                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                        
-                        Toggle("", isOn: $isDarkTheme)
-                            .labelsHidden()
-                    }
-                    .padding(.vertical, 4)
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
+            .buttonStyle(PlainButtonStyle())
+            
+            HStack {
+                Image(systemName: "scalemass")
+                    .font(.body)
+                    .foregroundColor(.green)
+                    .frame(width: 24, height: 24)
+                
+                Text("Units")
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text(useKilograms ? "kg" : "lb")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Toggle("", isOn: $useKilograms)
+                    .labelsHidden()
+            }
+            
+            HStack {
+                Image(systemName: "moon.fill")
+                    .font(.body)
+                    .foregroundColor(.blue)
+                    .frame(width: 24, height: 24)
+                
+                Text("Theme")
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text(isDarkTheme ? "Dark" : "Light")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Toggle("", isOn: $isDarkTheme)
+                    .labelsHidden()
+            }
+        } header: {
+            Text("General")
         }
     }
 }
@@ -256,62 +225,46 @@ struct ProfileNotificationsSection: View {
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
-        CardContainer {
-            VStack(spacing: DesignSystem.Spacing.medium) {
-                HStack {
-                    Text("Notifications")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                    Spacer()
-                }
+        Section {
+            HStack {
+                Image(systemName: "bell.fill")
+                    .font(.body)
+                    .foregroundColor(.red)
+                    .frame(width: 24, height: 24)
                 
-                VStack(spacing: DesignSystem.Spacing.medium) {
-                    HStack {
-                        GradientIcon(
-                            systemName: "bell.fill",
-                            gradient: DesignSystem.Gradients.error,
-                            size: 24
-                        )
-                        
-                        Text("Timer Notifications")
-                            .font(.body)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        
-                        Spacer()
-                        
-                        Text(timerNotificationsEnabled ? "On" : "Off")
-                            .font(.subheadline)
-                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                        
-                        Toggle("", isOn: $timerNotificationsEnabled)
-                            .labelsHidden()
-                    }
-                    .padding(.vertical, 4)
-                    
-                    HStack {
-                        GradientIcon(
-                            systemName: "speaker.wave.2.fill",
-                            gradient: DesignSystem.Gradients.primary,
-                            size: 24
-                        )
-                        
-                        Text("Sounds")
-                            .font(.body)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        
-                        Spacer()
-                        
-                        Text(soundsEnabled ? "On" : "Off")
-                            .font(.subheadline)
-                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                        
-                        Toggle("", isOn: $soundsEnabled)
-                            .labelsHidden()
-                    }
-                    .padding(.vertical, 4)
-                }
+                Text("Timer Notifications")
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text(timerNotificationsEnabled ? "On" : "Off")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Toggle("", isOn: $timerNotificationsEnabled)
+                    .labelsHidden()
             }
+            
+            HStack {
+                Image(systemName: "speaker.wave.2.fill")
+                    .font(.body)
+                    .foregroundColor(.blue)
+                    .frame(width: 24, height: 24)
+                
+                Text("Sounds")
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text(soundsEnabled ? "On" : "Off")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Toggle("", isOn: $soundsEnabled)
+                    .labelsHidden()
+            }
+        } header: {
+            Text("Notifications")
         }
     }
 }
@@ -320,70 +273,50 @@ struct ProfileInformationSection: View {
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
-        CardContainer {
-            VStack(spacing: DesignSystem.Spacing.medium) {
+        Section {
+            Button(action: {
+                // Help & Support action
+            }) {
                 HStack {
-                    Text("Information")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                    Spacer()
-                }
-                
-                VStack(spacing: DesignSystem.Spacing.medium) {
-                    Button(action: {
-                        // Help & Support action
-                    }) {
-                        HStack {
-                            GradientIcon(
-                                systemName: "questionmark.circle",
-                                gradient: DesignSystem.Gradients.primary,
-                                size: 24
-                            )
-                            
-                            Text("Help & Support")
-                                .font(.body)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                            
-                            Spacer()
-                            
-                            GradientIcon(
-                                systemName: "chevron.right",
-                                gradient: DesignSystem.Gradients.primary,
-                                size: 16
-                            )
-                        }
-                        .padding(.vertical, 4)
-                    }
-                    .buttonStyle(PlainButtonStyle())
+                    Image(systemName: "questionmark.circle")
+                        .font(.body)
+                        .foregroundColor(.blue)
+                        .frame(width: 24, height: 24)
                     
-                    Button(action: {
-                        // Rate App action
-                    }) {
-                        HStack {
-                            GradientIcon(
-                                systemName: "star",
-                                gradient: DesignSystem.Gradients.warning,
-                                size: 24
-                            )
-                            
-                            Text("Rate App")
-                                .font(.body)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                            
-                            Spacer()
-                            
-                            GradientIcon(
-                                systemName: "chevron.right",
-                                gradient: DesignSystem.Gradients.primary,
-                                size: 16
-                            )
-                        }
-                        .padding(.vertical, 4)
-                    }
-                    .buttonStyle(PlainButtonStyle())
+                    Text("Help & Support")
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
+            .buttonStyle(PlainButtonStyle())
+            
+            Button(action: {
+                // Rate App action
+            }) {
+                HStack {
+                    Image(systemName: "star")
+                        .font(.body)
+                        .foregroundColor(.yellow)
+                        .frame(width: 24, height: 24)
+                    
+                    Text("Rate App")
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+        } header: {
+            Text("Information")
         }
     }
 }
@@ -392,15 +325,14 @@ struct ProfileVersionSection: View {
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
-        CardContainer {
+        Section {
             HStack {
                 Spacer()
                 Text("Version 1.0.0")
                     .font(.caption)
-                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                    .foregroundColor(.secondary)
                 Spacer()
             }
-            .padding(.vertical, DesignSystem.Spacing.small)
         }
     }
 }
@@ -412,68 +344,50 @@ struct ProfileSupportSection: View {
     @State private var showingRateApp = false
     
     var body: some View {
-        CardContainer {
-            VStack(spacing: DesignSystem.Spacing.medium) {
+        Section {
+            Button(action: {
+                showingHelpSupport = true
+            }) {
                 HStack {
-                    Text("Support & Feedback")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                    Spacer()
-                }
-                
-                VStack(spacing: DesignSystem.Spacing.medium) {
-                    Button(action: {
-                        showingHelpSupport = true
-                    }) {
-                        HStack {
-                            GradientIcon(
-                                systemName: "questionmark.circle.fill",
-                                gradient: DesignSystem.Gradients.primary,
-                                size: 24
-                            )
-                            
-                            Text("Help & Support")
-                                .font(.body)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                            
-                            Spacer()
-                            
-                            GradientIcon(
-                                systemName: "chevron.right",
-                                gradient: DesignSystem.Gradients.primary,
-                                size: 16
-                            )
-                        }
-                    }
-                    .buttonStyle(PlainButtonStyle())
+                    Image(systemName: "questionmark.circle.fill")
+                        .font(.body)
+                        .foregroundColor(.blue)
+                        .frame(width: 24, height: 24)
                     
-                    Button(action: {
-                        showingRateApp = true
-                    }) {
-                        HStack {
-                            GradientIcon(
-                                systemName: "star.fill",
-                                gradient: DesignSystem.Gradients.warning,
-                                size: 24
-                            )
-                            
-                            Text("Rate App")
-                                .font(.body)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                            
-                            Spacer()
-                            
-                            GradientIcon(
-                                systemName: "chevron.right",
-                                gradient: DesignSystem.Gradients.primary,
-                                size: 16
-                            )
-                        }
-                    }
-                    .buttonStyle(PlainButtonStyle())
+                    Text("Help & Support")
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
+            .buttonStyle(PlainButtonStyle())
+            
+            Button(action: {
+                showingRateApp = true
+            }) {
+                HStack {
+                    Image(systemName: "star.fill")
+                        .font(.body)
+                        .foregroundColor(.yellow)
+                        .frame(width: 24, height: 24)
+                    
+                    Text("Rate App")
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+        } header: {
+            Text("Support & Feedback")
         }
         .sheet(isPresented: $showingHelpSupport) {
             HelpSupportView()
@@ -495,63 +409,59 @@ struct RestTimePickerView: View {
     
     var body: some View {
         NavigationView {
-            ZStack {
-                DesignSystem.Colors.background(for: colorScheme)
-                    .ignoresSafeArea()
+            VStack(spacing: 20) {
+                // Header
+                HStack {
+                    Image(systemName: "timer")
+                        .font(.title)
+                        .foregroundColor(.orange)
+                    
+                    Text("Select Default Rest Time")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal)
                 
-                VStack(spacing: DesignSystem.Spacing.large) {
-                    ModalContainer {
-                        VStack(spacing: DesignSystem.Spacing.large) {
-                            // Header
-                            HStack {
-                                GradientIcon(
-                                    systemName: "timer",
-                                    gradient: DesignSystem.Gradients.secondary,
-                                    size: 32
-                                )
-                                
-                                Text("Select Default Rest Time")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                                
-                                Spacer()
-                            }
-                            
-                            // Picker
-                            Picker("Rest Time", selection: $selectedTime) {
-                                ForEach(restTimeOptions, id: \.self) { seconds in
-                                    Text("\(seconds) seconds").tag(seconds)
-                                }
-                            }
-                            .pickerStyle(WheelPickerStyle())
-                            .frame(height: 200)
-                            
-                            // Buttons
-                            HStack(spacing: DesignSystem.Spacing.medium) {
-                                Button("Cancel") {
-                                    isPresented = false
-                                }
-                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                                .padding(.horizontal, DesignSystem.Spacing.large)
-                                .padding(.vertical, DesignSystem.Spacing.medium)
-                                .background(
-                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                        .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                )
-                                
-                                GradientButton(
-                                    title: "Done",
-                                    gradient: DesignSystem.Gradients.secondary
-                                ) {
-                                    isPresented = false
-                                }
-                            }
-                        }
+                // Picker
+                Picker("Rest Time", selection: $selectedTime) {
+                    ForEach(restTimeOptions, id: \.self) { seconds in
+                        Text("\(seconds) seconds").tag(seconds)
                     }
                 }
-                .padding(DesignSystem.Spacing.large)
+                .pickerStyle(WheelPickerStyle())
+                .frame(height: 200)
+                
+                // Buttons
+                HStack(spacing: 20) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 30)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(.systemGray5))
+                    )
+                    
+                    Button("Done") {
+                        isPresented = false
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 30)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(.blue)
+                    )
+                }
+                
+                Spacer()
             }
+            .padding(.top)
+            .navigationBarHidden(true)
         }
     }
 }

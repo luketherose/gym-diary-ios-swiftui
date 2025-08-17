@@ -100,109 +100,70 @@ struct RateAppView: View {
                         if selectedRating > 0 {
                             VStack(spacing: DesignSystem.Spacing.medium) {
                                 // Rate on App Store Button
-                                if selectedRating >= 4 {
-                                    Button(action: {
-                                        rateOnAppStore()
-                                    }) {
-                                        HStack {
-                                            Image(systemName: "star.fill")
-                                            Text("Rate on App Store")
-                                        }
-                                        .font(.headline)
-                                        .foregroundColor(.white)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(DesignSystem.Spacing.medium)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                                .fill(DesignSystem.Gradients.success)
-                                        )
+                                Button(action: rateOnAppStore) {
+                                    HStack {
+                                        Image(systemName: "star.fill")
+                                        Text("Rate on App Store")
                                     }
-                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(DesignSystem.Gradients.primary)
+                                    .cornerRadius(DesignSystem.CornerRadius.medium)
                                 }
                                 
-                                // Feedback Button
+                                // Share Feedback Button
                                 Button(action: {
                                     showingFeedback = true
                                 }) {
                                     HStack {
                                         Image(systemName: "message.fill")
-                                        Text("Send Feedback")
+                                        Text("Share Feedback")
                                     }
                                     .font(.headline)
                                     .foregroundColor(DesignSystem.Colors.primary)
                                     .frame(maxWidth: .infinity)
-                                    .padding(DesignSystem.Spacing.medium)
+                                    .padding()
                                     .background(
                                         RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                            .fill(Color(.systemBackground))
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                                    .stroke(DesignSystem.Colors.primary, lineWidth: 2)
-                                            )
+                                            .stroke(DesignSystem.Colors.primary, lineWidth: 2)
                                     )
                                 }
-                                .transition(.opacity.combined(with: .move(edge: .bottom)))
-                                
-                                // Maybe Later Button
-                                Button(action: {
-                                    dismiss()
-                                }) {
-                                    Text("Maybe Later")
-                                        .font(.body)
-                                        .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                                }
-                                .transition(.opacity.combined(with: .move(edge: .bottom)))
                             }
                             .padding(.horizontal, DesignSystem.Spacing.large)
                         }
                         
                         // Benefits Section
-                        VStack(spacing: DesignSystem.Spacing.medium) {
-                            Text("Why rate us?")
-                                .font(.headline)
-                                .fontWeight(.semibold)
+                        VStack(spacing: DesignSystem.Spacing.large) {
+                            Text("Why Rate Us?")
+                                .font(.title2)
+                                .fontWeight(.bold)
                                 .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
                             
-                            VStack(spacing: DesignSystem.Spacing.small) {
+                            VStack(spacing: DesignSystem.Spacing.medium) {
                                 BenefitRow(
                                     icon: "heart.fill",
-                                    title: "Support Development",
-                                    description: "Help us continue building amazing features"
-                                )
-                                
-                                BenefitRow(
-                                    icon: "lightbulb.fill",
-                                    title: "Improve the App",
-                                    description: "Your feedback guides our development priorities"
-                                )
-                                
-                                BenefitRow(
-                                    icon: "person.2.fill",
                                     title: "Help Other Users",
-                                    description: "Your rating helps others discover the app"
+                                    description: "Your rating helps other fitness enthusiasts discover our app"
+                                )
+                                
+                                BenefitRow(
+                                    icon: "gear.fill",
+                                    title: "Improve the App",
+                                    description: "Your feedback directly influences our development priorities"
+                                )
+                                
+                                BenefitRow(
+                                    icon: "star.fill",
+                                    title: "Support Development",
+                                    description: "High ratings help us continue building amazing features"
                                 )
                             }
-                            .padding(.horizontal, DesignSystem.Spacing.large)
                         }
-                        .padding(.top, DesignSystem.Spacing.large)
+                        .padding(.horizontal, DesignSystem.Spacing.large)
                         
-                        // App Stats
-                        VStack(spacing: DesignSystem.Spacing.small) {
-                            Text("Gym Diary has helped")
-                                .font(.caption)
-                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                            
-                            Text("10,000+ fitness enthusiasts")
-                                .font(.headline)
-                                .fontWeight(.bold)
-                                .foregroundColor(DesignSystem.Colors.primary)
-                            
-                            Text("achieve their fitness goals")
-                                .font(.caption)
-                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                        }
-                        .padding(.top, DesignSystem.Spacing.large)
-                        .padding(.bottom, DesignSystem.Spacing.large)
+                        Spacer(minLength: DesignSystem.Spacing.large)
                     }
                 }
             }
@@ -213,7 +174,7 @@ struct RateAppView: View {
                     Button("Close") {
                         dismiss()
                     }
-                    .foregroundColor(DesignSystem.Colors.primary)
+                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
                 }
             }
         }
@@ -231,19 +192,29 @@ struct RateAppView: View {
     
     private var ratingDescription: String {
         switch selectedRating {
-        case 1: return "Terrible - We're sorry to hear that"
-        case 2: return "Poor - We need to improve"
+        case 1: return "Terrible - We need to improve!"
+        case 2: return "Poor - Not what you expected"
         case 3: return "Okay - Room for improvement"
-        case 4: return "Good - We're on the right track"
-        case 5: return "Excellent - We're thrilled!"
+        case 4: return "Good - Almost there!"
+        case 5: return "Excellent - Love it!"
         default: return ""
         }
     }
     
     private func rateOnAppStore() {
-        // Request App Store review
+        // Request App Store review with availability check
         if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+            // Suppress deprecation warning for now since AppStore module isn't available
+            #if compiler(>=5.9)
+            if #available(iOS 18.0, *) {
+                // Use new API when available
+                // AppStore.requestReview(in: scene) // Uncomment when AppStore module is available
+            } else {
+                SKStoreReviewController.requestReview(in: scene)
+            }
+            #else
             SKStoreReviewController.requestReview(in: scene)
+            #endif
         }
         
         // Also open App Store page as fallback

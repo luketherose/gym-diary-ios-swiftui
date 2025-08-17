@@ -295,10 +295,6 @@ struct WorkoutIcon {
     static func icons(for category: String) -> [WorkoutIcon] {
         return allIcons.filter { $0.category == category }
     }
-    
-    static func randomIcon() -> WorkoutIcon {
-        return allIcons.randomElement() ?? allIcons[0]
-    }
 }
 
 struct WorkoutColor {
@@ -316,10 +312,6 @@ struct WorkoutColor {
         WorkoutColor(color: .indigo, name: "Indigo", isDark: true),
         WorkoutColor(color: .teal, name: "Teal", isDark: true)
     ]
-    
-    static func randomColor() -> WorkoutColor {
-        return allColors.randomElement() ?? allColors[0]
-    }
 }
 
 // MARK: - Workout Category Helper
