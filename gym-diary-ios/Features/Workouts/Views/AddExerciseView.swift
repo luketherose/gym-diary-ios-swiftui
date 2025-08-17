@@ -20,6 +20,11 @@ private enum BodyPart: String, CaseIterable, Identifiable {
 struct AddExerciseView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    
+    private enum Mode { case add, edit }
+    private let mode: Mode
+    private let onAdd: ((Exercise) -> Void)?
+    private let applyEdit: ((inout Exercise) -> Void)?
     @State private var searchText = ""
     @State private var selectedExerciseName: String? = nil
     @State private var selectedVariants: Set<ExerciseVariant> = []
@@ -205,14 +210,16 @@ struct AddExerciseView: View {
                     .padding(.bottom, DesignSystem.Spacing.large)
                 }
             }
-            .navigationTitle("Add Exercise")
+            .navigationTitle(mode == .add ? "Add Exercise" : "Edit Exercise")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Add") { finish() }
-                        .disabled(selectedExerciseName == nil)
+                    Button(mode == .add ? "Add" : "Save") {
+                        if mode == .add { finishAdd() } else { finishEdit() }
+                    }
+                    .disabled(selectedExerciseName == nil)
                 }
             }
         }
@@ -241,7 +248,7 @@ struct AddExerciseView: View {
         return ExerciseVariant.allCases
     }
     
-    private func finish() {
+    private func finishAdd() {
         guard let name = selectedExerciseName else { return }
         let resolvedCategory = meta[name]?.type ?? selectedType ?? .other
         let exercise = Exercise(
@@ -254,11 +261,59 @@ struct AddExerciseView: View {
             restTime: defaultRestTime,
             notes: notesEnabled ? (note.isEmpty ? nil : note) : nil
         )
-        onAdd(exercise)
+        onAdd?(exercise)
         dismiss()
     }
     
-    let onAdd: (Exercise) -> Void
+    private func finishEdit() {
+        guard var dummy = currentEditingExercise else { return }
+        guard let name = selectedExerciseName else { return }
+        dummy.name = name
+        dummy.variants = Array(selectedVariants)
+        dummy.notes = notesEnabled ? (note.isEmpty ? nil : note) : nil
+        var toApply = dummy
+        applyEdit?(&toApply)
+        dismiss()
+    }
+    
+    // MARK: - Init
+    init(onAdd: @escaping (Exercise) -> Void) {
+        self.mode = .add
+        self.onAdd = onAdd
+        self.applyEdit = nil
+        self._searchText = State(initialValue: "")
+        self._selectedExerciseName = State(initialValue: nil)
+        self._selectedVariants = State(initialValue: [])
+        self._note = State(initialValue: "")
+        self._variantEnabled = State(initialValue: false)
+        self._notesEnabled = State(initialValue: false)
+        self._selectedBodyPart = State(initialValue: nil)
+        self._selectedType = State(initialValue: nil)
+        self.currentEditingExercise = nil
+    }
+    
+    init(exercise: Binding<Exercise>) {
+        self.mode = .edit
+        self.onAdd = nil
+        self.applyEdit = { updated in
+            exercise.wrappedValue.name = updated.name
+            exercise.wrappedValue.variants = updated.variants
+            exercise.wrappedValue.notes = updated.notes
+        }
+        let ex = exercise.wrappedValue
+        self._searchText = State(initialValue: ex.name)
+        self._selectedExerciseName = State(initialValue: ex.name)
+        self._selectedVariants = State(initialValue: Set(ex.variants))
+        self._note = State(initialValue: ex.notes ?? "")
+        self._variantEnabled = State(initialValue: !ex.variants.isEmpty)
+        self._notesEnabled = State(initialValue: (ex.notes ?? "").isEmpty == false)
+        self._selectedBodyPart = State(initialValue: nil)
+        self._selectedType = State(initialValue: nil)
+        self.currentEditingExercise = ex
+    }
+    
+    // Stored just to snapshot original when entering edit
+    private var currentEditingExercise: Exercise?
 }
 
 

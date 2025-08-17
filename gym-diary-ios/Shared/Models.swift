@@ -188,13 +188,13 @@ struct Workout: Identifiable, Codable {
 struct Exercise: Identifiable, Codable {
     let id: String
     let workoutId: String
-    let name: String
+    var name: String
     let category: ExerciseCategory
     var variants: [ExerciseVariant]
     var sets: [ExerciseSet]
     let order: Int
     let restTime: Int
-    let notes: String?
+    var notes: String?
     
     init(id: String = UUID().uuidString,
          workoutId: String,

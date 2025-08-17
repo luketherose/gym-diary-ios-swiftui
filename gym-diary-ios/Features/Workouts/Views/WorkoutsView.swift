@@ -761,6 +761,86 @@ extension WorkoutDetailView {
     // move state inside main struct - allowed as computed via backing storage
 }
 
+// MARK: - Edit Exercise View
+struct EditExerciseView: View {
+    @Binding var exercise: Exercise
+    let allowed: [ExerciseVariant]
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var tempName: String = ""
+    @State private var selectedVariants: Set<ExerciseVariant> = []
+    @State private var tempNotes: String = ""
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: DesignSystem.Spacing.large) {
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                        Text("Exercise Name")
+                            .font(.headline)
+                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                        TextField("Name", text: $tempName)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                        Text("Variants")
+                            .font(.headline)
+                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(allowed, id: \.self) { v in
+                                    let isSel = selectedVariants.contains(v)
+                                    Button(action: {
+                                        if isSel { selectedVariants.remove(v) } else { selectedVariants.insert(v) }
+                                    }) {
+                                        Text(v.displayName)
+                                            .foregroundColor(isSel ? .white : DesignSystem.Colors.textPrimary(for: colorScheme))
+                                            .padding(8)
+                                            .background(RoundedRectangle(cornerRadius: 8).fill(isSel ? DesignSystem.Colors.primary : Color(.systemGray5)))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                        Text("Notes")
+                            .font(.headline)
+                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                        TextEditor(text: $tempNotes)
+                            .frame(minHeight: 100)
+                            .padding(8)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                    .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
+                            )
+                    }
+                }
+                .padding(DesignSystem.Spacing.large)
+            }
+            .navigationTitle("Edit Exercise")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .navigationBarTrailing) { Button("Save") { save() }.disabled(tempName.isEmpty) }
+            }
+        }
+        .onAppear { load() }
+    }
+    
+    private func load() {
+        tempName = exercise.name
+        selectedVariants = Set(exercise.variants)
+        tempNotes = exercise.notes ?? ""
+    }
+    
+    private func save() {
+        exercise.name = tempName
+        exercise.variants = Array(selectedVariants)
+        exercise.notes = tempNotes.isEmpty ? nil : tempNotes
+        dismiss()
+    }
+}
 // MARK: - Edit Workout View
 struct EditWorkoutView: View {
     @Binding var workout: Workout

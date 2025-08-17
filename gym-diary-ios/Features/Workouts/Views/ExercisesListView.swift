@@ -4,12 +4,17 @@ struct ExercisesListView: View {
     @Binding var workout: Workout
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingAddExercise = false
+    @State private var editingExerciseIndex: Int? = nil
 
     var body: some View {
         VStack(spacing: 0) {
             exercisesList
         }
         .sheet(isPresented: $showingAddExercise) { addExerciseSheet }
+        .sheet(isPresented: Binding<Bool>(
+            get: { editingExerciseIndex != nil },
+            set: { if !$0 { editingExerciseIndex = nil } }
+        )) { editExerciseSheet }
     }
 
     private var addExerciseSheet: some View {
@@ -61,22 +66,8 @@ struct ExercisesListView: View {
                     .font(.headline)
                     .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
                 Spacer()
-                Menu {
-                    // Toggle variants via multi-select menu
-                    ForEach(allowedVariants(for: ex), id: \.self) { v in
-                        let isOn = ex.variants.contains(v)
-                        Button(action: {
-                            if let idx = workout.exercises.firstIndex(where: { $0.id == ex.id }) {
-                                if isOn {
-                                    workout.exercises[idx].variants.removeAll { $0 == v }
-                                } else {
-                                    workout.exercises[idx].variants.append(v)
-                                }
-                            }
-                        }) {
-                            Label(v.displayName, systemImage: isOn ? "checkmark" : "")
-                        }
-                    }
+                Button {
+                    editingExerciseIndex = eIdx
                 } label: {
                     Image(systemName: "slider.horizontal.3")
                 }
@@ -115,6 +106,14 @@ struct ExercisesListView: View {
                 }
                 Spacer()
             }
+        }
+    }
+
+    // Edit sheet
+    @ViewBuilder
+    private var editExerciseSheet: some View {
+        if let idx = editingExerciseIndex, idx < workout.exercises.count {
+            AddExerciseView(exercise: $workout.exercises[idx])
         }
     }
 }
