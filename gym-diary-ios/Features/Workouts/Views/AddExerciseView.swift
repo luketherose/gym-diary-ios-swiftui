@@ -24,6 +24,7 @@ struct AddExerciseView: View {
     private enum Mode { case add, edit }
     private let mode: Mode
     private let onAdd: ((Exercise) -> Void)?
+    private let onAddCircuit: (([Exercise]) -> Void)? // NEW: Callback for circuit creation
     private let applyEdit: ((inout Exercise) -> Void)?
     @State private var searchText = ""
     @State private var selectedExerciseName: String? = nil
@@ -31,6 +32,8 @@ struct AddExerciseView: View {
     @State private var note: String = ""
     @State private var variantEnabled: Bool = false
     @State private var notesEnabled: Bool = false
+    @State private var isCircuitMode: Bool = false // NEW: Circuit mode toggle
+    @State private var selectedExercises: Set<String> = [] // NEW: Multi-selection for circuits
     @AppStorage("defaultRestTime") private var defaultRestTime: Int = 60
     @State private var selectedBodyPart: BodyPart? = nil
     @State private var selectedType: ExerciseCategory? = nil
@@ -125,17 +128,53 @@ struct AddExerciseView: View {
                     }
                     .padding(.horizontal, DesignSystem.Spacing.large)
                     
+                    // Circuit Mode Toggle
+                    HStack {
+                        Text("Mode")
+                            .font(.headline)
+                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                        Spacer()
+                        Picker("Circuit Mode", selection: $isCircuitMode) {
+                            Text("Single Exercise").tag(false)
+                            Text("Circuit").tag(true)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 200)
+                    }
+                    .padding(.horizontal, DesignSystem.Spacing.large)
+                    
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
                             ForEach(filtered, id: \.self) { name in
-                                Button(action: { selectedExerciseName = name }) {
+                                Button(action: {
+                                    if isCircuitMode {
+                                        // Multi-selection for circuits
+                                        if selectedExercises.contains(name) {
+                                            selectedExercises.remove(name)
+                                        } else {
+                                            selectedExercises.insert(name)
+                                        }
+                                    } else {
+                                        // Single selection for exercises
+                                        selectedExerciseName = name
+                                    }
+                                }) {
                                     HStack {
                                         Text(name)
                                             .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
                                         Spacer()
-                                        if selectedExerciseName == name {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(DesignSystem.Colors.primary)
+                                        if isCircuitMode {
+                                            // Show checkmark for selected exercises in circuit mode
+                                            if selectedExercises.contains(name) {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundColor(.orange)
+                                            }
+                                        } else {
+                                            // Show checkmark for selected exercise in single mode
+                                            if selectedExerciseName == name {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundColor(DesignSystem.Colors.primary)
+                                            }
                                         }
                                     }
                                 }
@@ -210,16 +249,16 @@ struct AddExerciseView: View {
                     .padding(.bottom, DesignSystem.Spacing.large)
                 }
             }
-            .navigationTitle(mode == .add ? "Add Exercise" : "Edit Exercise")
+            .navigationTitle(mode == .add ? (isCircuitMode ? "Add Circuit" : "Add Exercise") : "Edit Exercise")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(mode == .add ? "Add" : "Save") {
+                    Button(mode == .add ? (isCircuitMode ? "Create Circuit" : "Add Exercise") : "Save") {
                         if mode == .add { finishAdd() } else { finishEdit() }
                     }
-                    .disabled(selectedExerciseName == nil)
+                    .disabled(isCircuitMode ? selectedExercises.isEmpty : selectedExerciseName == nil)
                 }
             }
         }
@@ -249,19 +288,40 @@ struct AddExerciseView: View {
     }
     
     private func finishAdd() {
-        guard let name = selectedExerciseName else { return }
-        let resolvedCategory = meta[name]?.type ?? selectedType ?? .other
-        let exercise = Exercise(
-            workoutId: "temp",
-            name: name,
-            category: resolvedCategory,
-            variants: Array(selectedVariants),
-            sets: [],
-            order: 0,
-            restTime: defaultRestTime,
-            notes: notesEnabled ? (note.isEmpty ? nil : note) : nil
-        )
-        onAdd?(exercise)
+        if isCircuitMode {
+            // Create circuit with multiple exercises
+            let circuitExercises = selectedExercises.compactMap { name -> Exercise? in
+                let resolvedCategory = meta[name]?.type ?? selectedType ?? .other
+                return Exercise(
+                    workoutId: "temp",
+                    name: name,
+                    category: resolvedCategory,
+                    variants: [], // No variants for circuit exercises initially
+                    sets: [],
+                    order: 0,
+                    restTime: defaultRestTime,
+                    notes: nil,
+                    isCircuit: true,
+                    circuitId: UUID().uuidString // Temporary ID, will be updated when added to workout
+                )
+            }
+            onAddCircuit?(circuitExercises)
+        } else {
+            // Create single exercise
+            guard let name = selectedExerciseName else { return }
+            let resolvedCategory = meta[name]?.type ?? selectedType ?? .other
+            let exercise = Exercise(
+                workoutId: "temp",
+                name: name,
+                category: resolvedCategory,
+                variants: Array(selectedVariants),
+                sets: [],
+                order: 0,
+                restTime: defaultRestTime,
+                notes: notesEnabled ? (note.isEmpty ? nil : note) : nil
+            )
+            onAdd?(exercise)
+        }
         dismiss()
     }
     
@@ -280,6 +340,7 @@ struct AddExerciseView: View {
     init(onAdd: @escaping (Exercise) -> Void) {
         self.mode = .add
         self.onAdd = onAdd
+        self.onAddCircuit = nil
         self.applyEdit = nil
         self._searchText = State(initialValue: "")
         self._selectedExerciseName = State(initialValue: nil)
@@ -287,6 +348,26 @@ struct AddExerciseView: View {
         self._note = State(initialValue: "")
         self._variantEnabled = State(initialValue: false)
         self._notesEnabled = State(initialValue: false)
+        self._isCircuitMode = State(initialValue: false)
+        self._selectedExercises = State(initialValue: [])
+        self._selectedBodyPart = State(initialValue: nil)
+        self._selectedType = State(initialValue: nil)
+        self.currentEditingExercise = nil
+    }
+    
+    init(onAddCircuit: @escaping ([Exercise]) -> Void) {
+        self.mode = .add
+        self.onAdd = nil
+        self.onAddCircuit = onAddCircuit
+        self.applyEdit = nil
+        self._searchText = State(initialValue: "")
+        self._selectedExerciseName = State(initialValue: nil)
+        self._selectedVariants = State(initialValue: [])
+        self._note = State(initialValue: "")
+        self._variantEnabled = State(initialValue: false)
+        self._notesEnabled = State(initialValue: false)
+        self._isCircuitMode = State(initialValue: true) // Start in circuit mode
+        self._selectedExercises = State(initialValue: [])
         self._selectedBodyPart = State(initialValue: nil)
         self._selectedType = State(initialValue: nil)
         self.currentEditingExercise = nil
@@ -295,6 +376,7 @@ struct AddExerciseView: View {
     init(exercise: Binding<Exercise>) {
         self.mode = .edit
         self.onAdd = nil
+        self.onAddCircuit = nil
         self.applyEdit = { updated in
             exercise.wrappedValue.name = updated.name
             exercise.wrappedValue.variants = updated.variants
@@ -307,6 +389,8 @@ struct AddExerciseView: View {
         self._note = State(initialValue: ex.notes ?? "")
         self._variantEnabled = State(initialValue: !ex.variants.isEmpty)
         self._notesEnabled = State(initialValue: (ex.notes ?? "").isEmpty == false)
+        self._isCircuitMode = State(initialValue: false)
+        self._selectedExercises = State(initialValue: [])
         self._selectedBodyPart = State(initialValue: nil)
         self._selectedType = State(initialValue: nil)
         self.currentEditingExercise = ex

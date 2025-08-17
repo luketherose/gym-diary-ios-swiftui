@@ -150,6 +150,7 @@ struct Workout: Identifiable, Codable {
     var name: String
     let description: String?
     var exercises: [Exercise]
+    var circuits: [Circuit] // NEW: Array of circuits in this workout
     let createdAt: Date
     let updatedAt: Date
     let lastExecuted: Date?
@@ -163,6 +164,7 @@ struct Workout: Identifiable, Codable {
          name: String,
          description: String? = nil,
          exercises: [Exercise] = [],
+         circuits: [Circuit] = [], // NEW: Initialize circuits array
          createdAt: Date = Date(),
          updatedAt: Date = Date(),
          lastExecuted: Date? = nil,
@@ -175,6 +177,7 @@ struct Workout: Identifiable, Codable {
         self.name = name
         self.description = description
         self.exercises = exercises
+        self.circuits = circuits // NEW: Assign circuits
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.lastExecuted = lastExecuted
@@ -192,9 +195,11 @@ struct Exercise: Identifiable, Codable {
     let category: ExerciseCategory
     var variants: [ExerciseVariant]
     var sets: [ExerciseSet]
-    let order: Int
+    var order: Int // Changed from let to var
     let restTime: Int
     var notes: String?
+    var isCircuit: Bool // NEW: Indicates if part of a circuit
+    var circuitId: String? // NEW: ID of the circuit this exercise belongs to
     
     init(id: String = UUID().uuidString,
          workoutId: String,
@@ -204,7 +209,9 @@ struct Exercise: Identifiable, Codable {
          sets: [ExerciseSet] = [],
          order: Int = 0,
          restTime: Int = 60,
-         notes: String? = nil) {
+         notes: String? = nil,
+         isCircuit: Bool = false,
+         circuitId: String? = nil) {
         self.id = id
         self.workoutId = workoutId
         self.name = name
@@ -214,6 +221,8 @@ struct Exercise: Identifiable, Codable {
         self.order = order
         self.restTime = restTime
         self.notes = notes
+        self.isCircuit = isCircuit
+        self.circuitId = circuitId
     }
 }
 
@@ -253,43 +262,72 @@ struct ExerciseSet: Identifiable, Codable, Equatable {
 struct Circuit: Identifiable, Codable {
     let id: String
     let workoutId: String
-    let name: String
-    let exercises: [CircuitExercise]
-    let restBetweenCircuits: Int // in seconds
-    let order: Int
+    let exerciseIds: [String] // Array of exercise IDs in this circuit
+    let order: Int // Order of the circuit within the workout
+    let createdAt: Date
+    let updatedAt: Date
     
     init(id: String = UUID().uuidString,
          workoutId: String,
-         name: String,
-         exercises: [CircuitExercise] = [],
-         restBetweenCircuits: Int = 120,
-         order: Int = 0) {
+         exerciseIds: [String] = [],
+         order: Int = 0,
+         createdAt: Date = Date(),
+         updatedAt: Date = Date()) {
         self.id = id
         self.workoutId = workoutId
-        self.name = name
-        self.exercises = exercises
-        self.restBetweenCircuits = restBetweenCircuits
+        self.exerciseIds = exerciseIds
         self.order = order
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }
 
-struct CircuitExercise: Identifiable, Codable {
+struct CircuitSet: Identifiable, Codable {
     let id: String
     let circuitId: String
-    let exerciseId: String
     let order: Int
-    let restAfter: Int // in seconds
+    var restSec: Int? // Shared rest time for all exercises in this circuit set
+    var completed: Bool? // Shared completion status for all exercises in this circuit set
+    let exercises: [CircuitSetExercise] // Individual exercise parameters within the set
+    let createdAt: Date?
+    let updatedAt: Date?
     
     init(id: String = UUID().uuidString,
          circuitId: String,
-         exerciseId: String,
          order: Int = 0,
-         restAfter: Int = 0) {
+         restSec: Int? = nil,
+         completed: Bool? = false,
+         exercises: [CircuitSetExercise] = [],
+         createdAt: Date? = Date(),
+         updatedAt: Date? = Date()) {
         self.id = id
         self.circuitId = circuitId
-        self.exerciseId = exerciseId
         self.order = order
-        self.restAfter = restAfter
+        self.restSec = restSec
+        self.completed = completed
+        self.exercises = exercises
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+struct CircuitSetExercise: Identifiable, Codable {
+    let id: String
+    let exerciseId: String
+    var reps: Int
+    var weight: Double?
+    var note: String?
+    
+    init(id: String = UUID().uuidString,
+         exerciseId: String,
+         reps: Int,
+         weight: Double? = nil,
+         note: String? = nil) {
+        self.id = id
+        self.exerciseId = exerciseId
+        self.reps = reps
+        self.weight = weight
+        self.note = note
     }
 }
 
@@ -301,6 +339,7 @@ struct Session: Identifiable, Codable {
     let startedAt: Date?
     let completedAt: Date?
     let exercises: [SessionExercise]
+    let circuits: [SessionCircuit] // NEW: Array of session circuits
     let notes: String?
     let createdAt: Date
     let updatedAt: Date
@@ -312,6 +351,7 @@ struct Session: Identifiable, Codable {
          startedAt: Date? = nil,
          completedAt: Date? = nil,
          exercises: [SessionExercise] = [],
+         circuits: [SessionCircuit] = [], // NEW: Initialize circuits array
          notes: String? = nil,
          createdAt: Date = Date(),
          updatedAt: Date = Date()) {
@@ -322,6 +362,7 @@ struct Session: Identifiable, Codable {
         self.startedAt = startedAt
         self.completedAt = completedAt
         self.exercises = exercises
+        self.circuits = circuits // NEW: Assign circuits
         self.notes = notes
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -348,6 +389,75 @@ struct SessionExercise: Identifiable, Codable {
         self.sets = sets
         self.completed = completed
         self.order = order
+    }
+}
+
+struct SessionCircuit: Identifiable, Codable {
+    let id: String
+    let sessionId: String
+    let circuitId: String
+    let sets: [SessionCircuitSet]
+    let completed: Bool
+    let order: Int
+    
+    init(id: String = UUID().uuidString,
+         sessionId: String,
+         circuitId: String,
+         sets: [SessionCircuitSet] = [],
+         completed: Bool = false,
+         order: Int = 0) {
+        self.id = id
+        self.sessionId = sessionId
+        self.circuitId = circuitId
+        self.sets = sets
+        self.completed = completed
+        self.order = order
+    }
+}
+
+struct SessionCircuitSet: Identifiable, Codable {
+    let id: String
+    let sessionCircuitId: String
+    let order: Int
+    var restSec: Int?
+    var completed: Bool
+    let completedAt: Date?
+    let exercises: [SessionCircuitSetExercise]
+    
+    init(id: String = UUID().uuidString,
+         sessionCircuitId: String,
+         order: Int = 0,
+         restSec: Int? = nil,
+         completed: Bool = false,
+         completedAt: Date? = nil,
+         exercises: [SessionCircuitSetExercise] = []) {
+        self.id = id
+        self.sessionCircuitId = sessionCircuitId
+        self.order = order
+        self.restSec = restSec
+        self.completed = completed
+        self.completedAt = completedAt
+        self.exercises = exercises
+    }
+}
+
+struct SessionCircuitSetExercise: Identifiable, Codable {
+    let id: String
+    let exerciseId: String
+    var reps: Int
+    var weight: Double?
+    var note: String?
+    
+    init(id: String = UUID().uuidString,
+         exerciseId: String,
+         reps: Int,
+         weight: Double? = nil,
+         note: String? = nil) {
+        self.id = id
+        self.exerciseId = exerciseId
+        self.reps = reps
+        self.weight = weight
+        self.note = note
     }
 }
 

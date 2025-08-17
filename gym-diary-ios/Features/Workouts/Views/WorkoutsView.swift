@@ -13,11 +13,18 @@ enum DragState: Equatable {
 struct WorkoutsView: View {
     @State private var sections: [WorkoutSection] = [
         WorkoutSection(userId: "user123", name: "Strength", workouts: [
-            Workout(userId: "user123", name: "Push Day", exercises: [], iconName: "dumbbell", colorName: "blue", chipText: "Push"),
-            Workout(userId: "user123", name: "Pull Day", exercises: [], iconName: "dumbbell", colorName: "green", chipText: "Pull")
+            Workout(id: "workout1", userId: "user123", name: "Push Day", exercises: [], circuits: [], iconName: "dumbbell", colorName: "blue", chipText: "Push"),
+            Workout(id: "workout2", userId: "user123", name: "Pull Day", exercises: [], circuits: [], iconName: "dumbbell", colorName: "green", chipText: "Pull"),
+            Workout(id: "workout3", userId: "user123", name: "Circuit Training", exercises: [
+                Exercise(id: "ex1", workoutId: "workout3", name: "Push-ups", category: .bodyweight, variants: [.wideGrip], isCircuit: true, circuitId: "circuit1"),
+                Exercise(id: "ex2", workoutId: "workout3", name: "Pull-ups", category: .bodyweight, variants: [.wideGrip], isCircuit: true, circuitId: "circuit1"),
+                Exercise(id: "ex3", workoutId: "workout3", name: "Dips", category: .bodyweight, variants: [], isCircuit: true, circuitId: "circuit1")
+            ], circuits: [
+                Circuit(id: "circuit1", workoutId: "workout3", exerciseIds: ["ex1", "ex2", "ex3"], order: 0)
+            ], iconName: "figure.strengthtraining.traditional", colorName: "orange", chipText: "Circuit")
         ]),
         WorkoutSection(userId: "user123", name: "Cardio", workouts: [
-            Workout(userId: "user123", name: "Running", exercises: [], iconName: "figure.running", colorName: "red", chipText: "Cardio")
+            Workout(id: "workout4", userId: "user123", name: "Running", exercises: [], circuits: [], iconName: "figure.running", colorName: "red", chipText: "Cardio")
         ])
     ]
     @State private var showingCreateSection = false
@@ -747,7 +754,7 @@ struct WorkoutCard: View {
                     
                     // Custom chip text badge
                     GradientBadge(
-                        text: workout.chipText.isEmpty ? "\(workout.exercises.count)" : workout.chipText,
+                        text: workout.chipText.isEmpty ? "\(workout.exercises.count + workout.circuits.count)" : workout.chipText,
                         gradient: LinearGradient(colors: [workoutColor.color, workoutColor.color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
                     )
                 }
@@ -855,7 +862,7 @@ struct WorkoutDetailView: View {
                                 .fontWeight(.bold)
                                 .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
                             
-                            Text("\(workout.exercises.count) exercises")
+                            Text("\(workout.exercises.count + workout.circuits.count) exercises")
                                 .font(.caption)
                                 .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
                         }
