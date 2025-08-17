@@ -108,9 +108,10 @@ struct WorkoutsView: View {
                         LazyVStack(spacing: DesignSystem.Spacing.large) {
                             ForEach(sections.indices, id: \.self) { sectionIndex in
                                 WorkoutSectionView(
+                                    sectionIndex: sectionIndex,
                                     section: $sections[sectionIndex],
-                                    onWorkoutMoved: { fromIndex, toIndex in
-                                        moveWorkout(from: fromIndex, to: toIndex, in: sectionIndex)
+                                    onWorkoutDropped: { fromSection, fromIndex, toSection, toIndex in
+                                        moveWorkout(fromSection: fromSection, fromIndex: fromIndex, toSection: toSection, toIndex: toIndex)
                                     }
                                 )
                             }
@@ -133,9 +134,13 @@ struct WorkoutsView: View {
         }
     }
     
-    private func moveWorkout(from fromIndex: Int, to toIndex: Int, in sectionIndex: Int) {
-        let workout = sections[sectionIndex].workouts.remove(at: fromIndex)
-        sections[sectionIndex].workouts.insert(workout, at: toIndex)
+    private func moveWorkout(fromSection: Int, fromIndex: Int, toSection: Int, toIndex: Int) {
+        guard sections.indices.contains(fromSection),
+              sections.indices.contains(toSection),
+              sections[fromSection].workouts.indices.contains(fromIndex) else { return }
+        let workout = sections[fromSection].workouts.remove(at: fromIndex)
+        let insertionIndex = min(toIndex, sections[toSection].workouts.count)
+        sections[toSection].workouts.insert(workout, at: insertionIndex)
     }
     
     private func addNewSection() {
@@ -154,8 +159,9 @@ struct WorkoutsView: View {
 
 // MARK: - Workout Section View
 struct WorkoutSectionView: View {
+    let sectionIndex: Int
     @Binding var section: WorkoutSection
-    let onWorkoutMoved: (Int, Int) -> Void
+    let onWorkoutDropped: (_ fromSection: Int, _ fromIndex: Int, _ toSection: Int, _ toIndex: Int) -> Void
     
     @State private var showingCreateWorkout = false
     @Environment(\.colorScheme) private var colorScheme
@@ -196,11 +202,12 @@ struct WorkoutSectionView: View {
                             }
                         )
                             .frame(maxWidth: .infinity)
-                            .onDrag { NSItemProvider(object: "\(workoutIndex)" as NSString) }
+                            .onDrag { NSItemProvider(object: "\(sectionIndex):\(workoutIndex)" as NSString) }
                             .onDrop(of: [.text], delegate: WorkoutDropDelegate(
-                                workoutIndex: workoutIndex,
+                                toSectionIndex: sectionIndex,
+                                toWorkoutIndex: workoutIndex,
                                 section: $section,
-                                onWorkoutMoved: onWorkoutMoved
+                                onWorkoutDropped: onWorkoutDropped
                             ))
                     }
                 }
@@ -247,19 +254,21 @@ struct EmptyWorkoutSectionView: View {
 
 // MARK: - Workout Drop Delegate
 struct WorkoutDropDelegate: DropDelegate {
-    let workoutIndex: Int
+    let toSectionIndex: Int
+    let toWorkoutIndex: Int
     @Binding var section: WorkoutSection
-    let onWorkoutMoved: (Int, Int) -> Void
+    let onWorkoutDropped: (_ fromSection: Int, _ fromIndex: Int, _ toSection: Int, _ toIndex: Int) -> Void
     
     func performDrop(info: DropInfo) -> Bool {
         guard let itemProvider = info.itemProviders(for: [.text]).first else { return false }
-        
-        itemProvider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { (data, error) in
+        itemProvider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { (data, _) in
             DispatchQueue.main.async {
-                if let data = data as? Data,
-                   let sourceIndexString = String(data: data, encoding: .utf8),
-                   let sourceIndex = Int(sourceIndexString) {
-                    onWorkoutMoved(sourceIndex, workoutIndex)
+                guard let data = data as? Data,
+                      let payload = String(data: data, encoding: .utf8) else { return }
+                // Expecting format "section:index"
+                let parts = payload.split(separator: ":")
+                if parts.count == 2, let fromSection = Int(parts[0]), let fromIndex = Int(parts[1]) {
+                    onWorkoutDropped(fromSection, fromIndex, toSectionIndex, toWorkoutIndex)
                 }
             }
         }
@@ -267,7 +276,7 @@ struct WorkoutDropDelegate: DropDelegate {
     }
     
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        return DropProposal(operation: .move)
+        DropProposal(operation: .move)
     }
 }
 
