@@ -234,7 +234,7 @@ struct ExerciseSet: Identifiable, Codable, Equatable {
     var restTime: Int // in seconds
     var rpe: Int?
     let completed: Bool
-    let order: Int
+    var order: Int
     
     init(id: String = UUID().uuidString,
          exerciseId: String,
@@ -263,7 +263,7 @@ struct Circuit: Identifiable, Codable {
     let id: String
     let workoutId: String
     let exerciseIds: [String] // Array of exercise IDs in this circuit
-    let order: Int // Order of the circuit within the workout
+    var order: Int // Order of the circuit within the workout
     let createdAt: Date
     let updatedAt: Date
     

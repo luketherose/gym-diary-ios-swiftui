@@ -11,30 +11,16 @@ enum DragState: Equatable {
 
 // MARK: - Workouts View
 struct WorkoutsView: View {
-    @State private var sections: [WorkoutSection] = [
-        WorkoutSection(userId: "user123", name: "Strength", workouts: [
-            Workout(id: "workout1", userId: "user123", name: "Push Day", exercises: [], circuits: [], iconName: "dumbbell", colorName: "blue", chipText: "Push"),
-            Workout(id: "workout2", userId: "user123", name: "Pull Day", exercises: [], circuits: [], iconName: "dumbbell", colorName: "green", chipText: "Pull"),
-            Workout(id: "workout3", userId: "user123", name: "Circuit Training", exercises: [
-                Exercise(id: "ex1", workoutId: "workout3", name: "Push-ups", category: .bodyweight, variants: [.wideGrip], isCircuit: true, circuitId: "circuit1"),
-                Exercise(id: "ex2", workoutId: "workout3", name: "Pull-ups", category: .bodyweight, variants: [.wideGrip], isCircuit: true, circuitId: "circuit1"),
-                Exercise(id: "ex3", workoutId: "workout3", name: "Dips", category: .bodyweight, variants: [], isCircuit: true, circuitId: "circuit1")
-            ], circuits: [
-                Circuit(id: "circuit1", workoutId: "workout3", exerciseIds: ["ex1", "ex2", "ex3"], order: 0)
-            ], iconName: "figure.strengthtraining.traditional", colorName: "orange", chipText: "Circuit")
-        ]),
-        WorkoutSection(userId: "user123", name: "Cardio", workouts: [
-            Workout(id: "workout4", userId: "user123", name: "Running", exercises: [], circuits: [], iconName: "figure.running", colorName: "red", chipText: "Cardio")
-        ])
-    ]
+    @State private var sections: [WorkoutSection] = []
     @State private var showingCreateSection = false
     @State private var newSectionName = ""
     @State private var dragState: DragState = .none
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         NavigationView {
             ZStack {
-                DesignSystem.Colors.background(for: .dark)
+                DesignSystem.Colors.background(for: colorScheme)
                     .ignoresSafeArea()
                 
                 VStack(spacing: DesignSystem.Spacing.large) {
@@ -43,7 +29,7 @@ struct WorkoutsView: View {
                         Text("Workouts")
                             .font(.largeTitle)
                             .fontWeight(.bold)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: .dark))
+                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
                         
                         Spacer()
                         
@@ -72,8 +58,13 @@ struct WorkoutsView: View {
                                     onWorkoutDeleted: { workoutId in
                                         deleteWorkout(workoutId: workoutId)
                                     },
+                                    onSectionDeleted: { sectionId in
+                                        deleteSection(sectionId: sectionId)
+                                    },
                                     dragState: $dragState
                                 )
+                                .opacity(dragState == .dragging ? 0.6 : 1.0)
+                                .animation(.easeInOut(duration: 0.2), value: dragState)
                                 .onDrag {
                                     dragState = .dragging
                                     return NSItemProvider(object: "section:\(sectionIndex)" as NSString)
@@ -82,7 +73,9 @@ struct WorkoutsView: View {
                                     toSectionIndex: sectionIndex,
                                     onSectionMoved: { from, to in moveSection(from: from, to: to) },
                                     onWorkoutMovedToSection: { fromSection, fromIndex, toSection, toIndex in
-                                        moveWorkout(from: fromSection, from: fromIndex, to: toSection, to: toIndex)
+                                        // Insert at the end of the destination section
+                                        let endPosition = sections[toSection].workouts.count
+                                        moveWorkout(from: fromSection, from: fromIndex, to: toSection, to: endPosition)
                                     },
                                     dragState: $dragState
                                 ))
@@ -104,6 +97,11 @@ struct WorkoutsView: View {
         } message: {
             Text("Enter the name for your new section.")
         }
+        .onAppear { syncWorkouts() }
+    }
+    
+    private func syncWorkouts() {
+        SessionManager.shared.workouts = sections.flatMap { $0.workouts }
     }
     
     private func createSection() {
@@ -116,10 +114,12 @@ struct WorkoutsView: View {
         )
         sections.append(newSection)
         newSectionName = ""
+        syncWorkouts()
     }
     
     private func moveSection(from fromIndex: Int, to toIndex: Int) {
         sections.move(fromOffsets: IndexSet(integer: fromIndex), toOffset: toIndex)
+        syncWorkouts()
     }
     
     private func moveWorkout(from fromSectionIndex: Int, from fromWorkoutIndex: Int, to toSectionIndex: Int, to toWorkoutIndex: Int) {
@@ -130,15 +130,27 @@ struct WorkoutsView: View {
         // Insert at the specified position in the target section
         let insertIndex = min(toWorkoutIndex, sections[toSectionIndex].workouts.count)
         sections[toSectionIndex].workouts.insert(workout, at: insertIndex)
+        syncWorkouts()
+        
+        // Reset drag state after move
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            dragState = .none
+        }
     }
     
     private func deleteWorkout(workoutId: String) {
         for sectionIndex in sections.indices {
             if let workoutIndex = sections[sectionIndex].workouts.firstIndex(where: { $0.id == workoutId }) {
                 sections[sectionIndex].workouts.remove(at: workoutIndex)
+                syncWorkouts()
                 return
             }
         }
+    }
+    
+    private func deleteSection(sectionId: String) {
+        sections.removeAll { $0.id == sectionId }
+        syncWorkouts()
     }
 }
 
@@ -148,42 +160,77 @@ struct WorkoutSectionView: View {
     let sectionIndex: Int
     let onWorkoutMoved: (Int, Int, Int, Int) -> Void
     let onWorkoutDeleted: (String) -> Void
+    let onSectionDeleted: (String) -> Void
     @Binding var dragState: DragState
     @Environment(\.colorScheme) private var colorScheme
     @State private var showingCreateWorkout = false
+    @State private var showingDeleteAlert = false
+    @State private var newWorkoutName = ""
     
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.medium) {
-            // Section Header
-            HStack {
-                Text(section.name)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                
-                Spacer()
-                
-                Button(action: {
-                    showingCreateWorkout = true
-                }) {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundColor(DesignSystem.Colors.primary)
-                        .font(.title2)
-                }
-            }
-            .padding(.horizontal, DesignSystem.Spacing.medium)
-            .padding(.vertical, DesignSystem.Spacing.small)
+        VStack(spacing: 0) {
+            // Top border line
+            Rectangle()
+                .fill(Color(.systemGray4))
+                .frame(height: 1)
             
-            // Workouts Grid
-            if section.workouts.isEmpty {
-                EmptyWorkoutSectionView()
-            } else {
-                VStack(spacing: DesignSystem.Spacing.medium) {
-                    ForEach(section.workouts.indices, id: \.self) { workoutIndex in
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.medium) {
+                // Section Header
+                HStack {
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            section.isExpanded.toggle()
+                        }
+                    }) {
+                        HStack(spacing: DesignSystem.Spacing.small) {
+                            Text(section.name)
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                            
+                            Image(systemName: section.isExpanded ? "chevron.down" : "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                                .animation(.easeInOut(duration: 0.2), value: section.isExpanded)
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    Spacer()
+                    
+                    // Add workout button
+                    Button(action: {
+                        showingCreateWorkout = true
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.title3)
+                            .foregroundColor(DesignSystem.Colors.primary)
+                    }
+                    
+                    // Delete section button
+                    Button(action: {
+                        showingDeleteAlert = true
+                    }) {
+                        Image(systemName: "minus")
+                            .font(.title3)
+                            .foregroundColor(.red)
+                    }
+                }
+                .padding(.horizontal, DesignSystem.Spacing.large)
+                .padding(.vertical, DesignSystem.Spacing.medium)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(dragState == .overSection(sectionIndex) ? Color(.systemGray5) : Color.clear)
+                        .animation(.easeInOut(duration: 0.2), value: dragState)
+                )
+                
+                // Workouts Grid (hidden when collapsed)
+                if section.isExpanded {
+                    if section.workouts.isEmpty {
                         VStack(spacing: 0) {
-                            // Drop indicator above workout
+                            // Drop indicator when dragging over empty section
                             if case .overWorkout(let dragSection, let dragIndex) = dragState,
-                               dragSection == sectionIndex && dragIndex == workoutIndex {
+                               dragSection == sectionIndex && dragIndex == 0 {
                                 Rectangle()
                                     .fill(DesignSystem.Colors.primary)
                                     .frame(height: 3)
@@ -191,68 +238,102 @@ struct WorkoutSectionView: View {
                                     .transition(.scale.combined(with: .opacity))
                             }
                             
-                            WorkoutCard(
-                                workout: $section.workouts[workoutIndex],
-                                onDelete: {
-                                    onWorkoutDeleted(section.workouts[workoutIndex].id)
-                                }
-                            )
-                            .frame(maxWidth: .infinity)
-                            .onDrag {
-                                dragState = .dragging
-                                let provider = NSItemProvider()
-                                provider.registerDataRepresentation(forTypeIdentifier: UTType.plainText.identifier, visibility: .all) { completion in
-                                    let string = "\(sectionIndex):\(workoutIndex)"
-                                    completion(Data(string.utf8), nil)
-                                    return nil
-                                }
-                                return provider
-                            }
-                            .onDrop(of: [.plainText], delegate: WorkoutDropDelegate(
-                                toSectionIndex: sectionIndex,
-                                toWorkoutIndex: workoutIndex,
-                                section: $section,
-                                onWorkoutDropped: onWorkoutMoved,
-                                dragState: $dragState
-                            ))
+                            EmptyWorkoutSectionView()
+                                .contentShape(Rectangle())
+                                .onDrop(of: [.plainText], delegate: WorkoutDropDelegate(
+                                    toSectionIndex: sectionIndex,
+                                    toWorkoutIndex: 0,
+                                    section: $section,
+                                    onWorkoutDropped: onWorkoutMoved,
+                                    dragState: $dragState
+                                ))
                         }
+                        .padding(.horizontal, DesignSystem.Spacing.large)
+                        .padding(.bottom, DesignSystem.Spacing.medium)
+                    } else {
+                        VStack(spacing: DesignSystem.Spacing.medium) {
+                            ForEach(section.workouts.indices, id: \.self) { workoutIndex in
+                                VStack(spacing: 0) {
+                                    // Drop indicator above workout
+                                    if case .overWorkout(let dragSection, let dragIndex) = dragState,
+                                       dragSection == sectionIndex && dragIndex == workoutIndex {
+                                        Rectangle()
+                                            .fill(DesignSystem.Colors.primary)
+                                            .frame(height: 3)
+                                            .padding(.horizontal, DesignSystem.Spacing.small)
+                                            .transition(.scale.combined(with: .opacity))
+                                    }
+                                    
+                                    WorkoutCard(
+                                        workout: $section.workouts[workoutIndex],
+                                        onDelete: {
+                                            onWorkoutDeleted(section.workouts[workoutIndex].id)
+                                        },
+                                        isDragging: dragState == .dragging
+                                    )
+                                    .frame(maxWidth: .infinity)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            onWorkoutDeleted(section.workouts[workoutIndex].id)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
+                                    .onDrag {
+                                        dragState = .dragging
+                                        let provider = NSItemProvider()
+                                        provider.registerDataRepresentation(forTypeIdentifier: UTType.plainText.identifier, visibility: .all) { completion in
+                                            let string = "\(sectionIndex):\(workoutIndex)"
+                                            completion(Data(string.utf8), nil)
+                                            return nil
+                                        }
+                                        return provider
+                                    }
+                                    .onDrop(of: [.plainText], delegate: WorkoutDropDelegate(
+                                        toSectionIndex: sectionIndex,
+                                        toWorkoutIndex: workoutIndex,
+                                        section: $section,
+                                        onWorkoutDropped: onWorkoutMoved,
+                                        dragState: $dragState
+                                    ))
+                                }
+                            }
+                            
+                            // Drop indicator at the end of section
+                            if case .overWorkout(let dragSection, let dragIndex) = dragState,
+                               dragSection == sectionIndex && dragIndex == section.workouts.count {
+                                Rectangle()
+                                    .fill(DesignSystem.Colors.primary)
+                                    .frame(height: 3)
+                                    .padding(.horizontal, DesignSystem.Spacing.small)
+                                    .transition(.scale.combined(with: .opacity))
+                            }
+                            
+                            // Drop area at the end of section for last position
+                            Rectangle()
+                                .fill(Color.clear)
+                                .frame(height: 20)
+                                .onDrop(of: [.plainText], delegate: WorkoutDropDelegate(
+                                    toSectionIndex: sectionIndex,
+                                    toWorkoutIndex: section.workouts.count,
+                                    section: $section,
+                                    onWorkoutDropped: onWorkoutMoved,
+                                    dragState: $dragState
+                                ))
+                        }
+                        .padding(.horizontal, DesignSystem.Spacing.large)
+                        .padding(.bottom, DesignSystem.Spacing.medium)
                     }
-                    
-                    // Drop indicator at the end of section
-                    if case .overWorkout(let dragSection, let dragIndex) = dragState,
-                       dragSection == sectionIndex && dragIndex == section.workouts.count {
-                        Rectangle()
-                            .fill(DesignSystem.Colors.primary)
-                            .frame(height: 3)
-                            .padding(.horizontal, DesignSystem.Spacing.small)
-                            .transition(.scale.combined(with: .opacity))
-                    }
-                    
-                    // Drop area at the end of section for last position
-                    Rectangle()
-                        .fill(Color.clear)
-                        .frame(height: 20)
-                        .onDrop(of: [.plainText], delegate: WorkoutDropDelegate(
-                            toSectionIndex: sectionIndex,
-                            toWorkoutIndex: section.workouts.count,
-                            section: $section,
-                            onWorkoutDropped: onWorkoutMoved,
-                            dragState: $dragState
-                        ))
                 }
             }
+            
+            // Bottom border line
+            Rectangle()
+                .fill(Color(.systemGray4))
+                .frame(height: 1)
         }
-        .padding(DesignSystem.Spacing.large)
-        .background(
-            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.large)
-                .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.large)
-                        .stroke(dragState == .overSection(sectionIndex) ? DesignSystem.Colors.primary : Color.clear, lineWidth: 2)
-                )
-        )
-        .scaleEffect(dragState == .overSection(sectionIndex) ? 1.02 : 1.0)
         .animation(.easeInOut(duration: 0.2), value: dragState)
+        .animation(.easeInOut(duration: 0.2), value: section.isExpanded)
         .onDrop(of: [.plainText], delegate: SectionDropDelegate(
             toSectionIndex: sectionIndex,
             onSectionMoved: { from, to in
@@ -264,9 +345,44 @@ struct WorkoutSectionView: View {
             },
             dragState: $dragState
         ))
-        .sheet(isPresented: $showingCreateWorkout) {
-            CreateWorkoutForSectionView(section: $section)
+        .alert("Create New Workout", isPresented: $showingCreateWorkout) {
+            TextField("Workout Name", text: $newWorkoutName)
+            Button("Cancel", role: .cancel) {}
+            Button("Create") {
+                createWorkout()
+            }
+            .disabled(newWorkoutName.isEmpty)
+        } message: {
+            Text("Enter the name for your new workout.")
         }
+        .alert("Delete Section", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                onSectionDeleted(section.id)
+            }
+        } message: {
+            Text("Are you sure you want to delete '\(section.name)'? This will also delete all workouts in this section.")
+        }
+        .onChange(of: showingCreateWorkout) { _, isShowing in
+            if !isShowing {
+                newWorkoutName = ""
+            }
+        }
+    }
+    
+    private func createWorkout() {
+        guard !newWorkoutName.isEmpty else { return }
+        
+        let newWorkout = Workout(
+            userId: "user123",
+            name: newWorkoutName,
+            sectionId: section.id,
+            iconName: "dumbbell",
+            colorName: "Blue",
+            chipText: ""
+        )
+        section.workouts.append(newWorkout)
+        newWorkoutName = ""
     }
 }
 
@@ -291,10 +407,6 @@ struct EmptyWorkoutSectionView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(DesignSystem.Spacing.large)
-        .background(
-            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                .fill(DesignSystem.Colors.background(for: colorScheme))
-        )
     }
 }
 
@@ -368,7 +480,7 @@ struct SectionDropDelegate: DropDelegate {
                     if components.count == 2,
                        let fromSectionIndex = Int(components[0]),
                        let fromWorkoutIndex = Int(components[1]) {
-                        // Drop workout at the end of this section
+                        // Drop workout - the callback will handle positioning
                         onWorkoutMovedToSection(fromSectionIndex, fromWorkoutIndex, toSectionIndex, 0)
                     }
                 }
@@ -398,329 +510,17 @@ struct SectionDropDelegate: DropDelegate {
     }
 }
 
-// MARK: - Workout Icon and Color Selector
-struct WorkoutIconColorSelector: View {
-    @Binding var selectedIcon: WorkoutIcon
-    @Binding var selectedColor: WorkoutColor
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var selectedCategory: String
-    
-    private let categories = ["Strength", "Cardio", "Mobility"]
-    
-    init(selectedIcon: Binding<WorkoutIcon>, selectedColor: Binding<WorkoutColor>) {
-        self._selectedIcon = selectedIcon
-        self._selectedColor = selectedColor
-        // Initialize category based on the selected icon
-        self._selectedCategory = State(initialValue: selectedIcon.wrappedValue.category)
-    }
-    
-    var body: some View {
-        VStack(spacing: DesignSystem.Spacing.large) {
-            // Category Picker
-            VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                Text("Category")
-                    .font(.headline)
-                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                
-                Picker("Category", selection: $selectedCategory) {
-                    ForEach(categories, id: \.self) { category in
-                        Text(category).tag(category)
-                    }
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .onChange(of: selectedCategory) { oldValue, newValue in
-                    // Only change icon if current icon is not in the new category
-                    let iconsInNewCategory = WorkoutIcon.icons(for: newValue)
-                    if !iconsInNewCategory.contains(where: { $0.systemName == selectedIcon.systemName }) {
-                        // If current icon is not in new category, select first available
-                        if let firstIcon = iconsInNewCategory.first {
-                            selectedIcon = firstIcon
-                        }
-                    }
-                }
-            }
-            
-            // Icon Selection
-            VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                Text("Icon")
-                    .font(.headline)
-                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: DesignSystem.Spacing.medium) {
-                    ForEach(WorkoutIcon.icons(for: selectedCategory), id: \.systemName) { icon in
-                        Button(action: {
-                            selectedIcon = icon
-                        }) {
-                            VStack(spacing: 4) {
-                                Image(systemName: icon.systemName)
-                                    .font(.title2)
-                                    .foregroundColor(selectedIcon.systemName == icon.systemName ? .white : selectedColor.color)
-                                    .frame(width: 40, height: 40)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                            .fill(selectedIcon.systemName == icon.systemName ? selectedColor.color : Color.clear)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                                    .stroke(selectedColor.color, lineWidth: selectedIcon.systemName == icon.systemName ? 0 : 2)
-                                            )
-                                    )
-                                
-                                Text(icon.displayName)
-                                    .font(.caption)
-                                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                                    .lineLimit(1)
-                            }
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                }
-            }
-            
-            // Color Selection
-            VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                Text("Color")
-                    .font(.headline)
-                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: DesignSystem.Spacing.medium) {
-                    ForEach(WorkoutColor.allColors, id: \.name) { color in
-                        Button(action: {
-                            selectedColor = color
-                        }) {
-                            VStack(spacing: 4) {
-                                Circle()
-                                    .fill(color.color)
-                                    .frame(width: 40, height: 40)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color.white, lineWidth: selectedColor.name == color.name ? 3 : 0)
-                                    )
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color.black.opacity(0.2), lineWidth: selectedColor.name == color.name ? 0 : 1)
-                                    )
-                                
-                                Text(color.name)
-                                    .font(.caption)
-                                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                                    .lineLimit(1)
-                            }
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                }
-            }
-        }
-    }
-}
 
-// MARK: - Create Workout View
-struct CreateWorkoutView: View {
-    @Binding var sections: [WorkoutSection]
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var workoutName = ""
-    @State private var selectedSectionIndex = 0
-    @State private var selectedIcon = WorkoutIcon(systemName: "dumbbell", displayName: "Dumbbell", category: "Strength")
-    @State private var selectedColor = WorkoutColor(color: .blue, name: "Blue", isDark: false)
-    @State private var chipText = ""
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                DesignSystem.Colors.background(for: colorScheme)
-                    .ignoresSafeArea()
-                
-                VStack(spacing: DesignSystem.Spacing.large) {
-                    // Header
-                    HStack {
-                        Button("Cancel") {
-                            dismiss()
-                        }
-                        .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                        
-                        Spacer()
-                        
-                        Text("Create Workout")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        
-                        Spacer()
-                        
-                        Button("Create") {
-                            createWorkout()
-                        }
-                        .foregroundColor(DesignSystem.Colors.primary)
-                        .disabled(workoutName.isEmpty)
-                    }
-                    .padding(DesignSystem.Spacing.large)
-                    
-                    // Form
-                    ScrollView {
-                        VStack(spacing: DesignSystem.Spacing.large) {
-                            // Form fields
-                            VStack(spacing: DesignSystem.Spacing.medium) {
-                                VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                                    Text("Workout Name")
-                                        .font(.headline)
-                                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                                    
-                                    TextField("Enter workout name", text: $workoutName)
-                                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                                        .background(
-                                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                                .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                        )
-                                }
-                                
-                                VStack(alignment: .center, spacing: DesignSystem.Spacing.small) {
-                                    Text("Section")
-                                        .font(.headline)
-                                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                                    
-                                    Picker("Section", selection: $selectedSectionIndex) {
-                                        ForEach(sections.indices, id: \.self) { index in
-                                            Text(sections[index].name).tag(index)
-                                        }
-                                    }
-                                    .pickerStyle(MenuPickerStyle())
-                                    .background(
-                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                            .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                    )
-                                }
-                                
-                                                                        // Icon and Color Selection
-                                        WorkoutIconColorSelector(
-                                            selectedIcon: $selectedIcon,
-                                            selectedColor: $selectedColor
-                                        )
-                                        
-                                        // Chip Text Input
-                                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                                            Text("Chip Text")
-                                                .font(.headline)
-                                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                                            
-                                            TextField("e.g., Push, Pull, Legs, Upper, Lower...", text: $chipText)
-                                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                                .background(
-                                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                                        .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                                )
-                                        }
-                            }
-                        }
-                        .padding(DesignSystem.Spacing.large)
-                    }
-                }
-            }
-        }
-    }
-    
-                private func createWorkout() {
-                let newWorkout = Workout(
-                    userId: "user123",
-                    name: workoutName,
-                    sectionId: sections[selectedSectionIndex].id,
-                    iconName: selectedIcon.systemName,
-                    colorName: selectedColor.name,
-                    chipText: chipText.isEmpty ? "New" : chipText
-                )
-                sections[selectedSectionIndex].workouts.append(newWorkout)
-                dismiss()
-            }
-}
 
-// MARK: - Create Workout For Specific Section
-struct CreateWorkoutForSectionView: View {
-    @Binding var section: WorkoutSection
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var workoutName = ""
-    @State private var selectedIcon = WorkoutIcon(systemName: "dumbbell", displayName: "Dumbbell", category: "Strength")
-    @State private var selectedColor = WorkoutColor(color: .blue, name: "Blue", isDark: false)
-    @State private var chipText = ""
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                DesignSystem.Colors.background(for: colorScheme)
-                    .ignoresSafeArea()
-                
-                VStack(spacing: DesignSystem.Spacing.large) {
-                    // Header
-                    HStack {
-                        Button("Cancel") { dismiss() }
-                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                        Spacer()
-                        Text("Create Workout in \(section.name)")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        Spacer()
-                        Button("Create") { create() }
-                            .foregroundColor(DesignSystem.Colors.primary)
-                            .disabled(workoutName.isEmpty)
-                    }
-                    .padding(DesignSystem.Spacing.large)
-                    
-                    ScrollView {
-                        VStack(spacing: DesignSystem.Spacing.large) {
-                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                                Text("Workout Name")
-                                    .font(.headline)
-                                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                                TextField("Enter workout name", text: $workoutName)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .background(
-                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                            .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                    )
-                            }
-                            
-                            WorkoutIconColorSelector(
-                                selectedIcon: $selectedIcon,
-                                selectedColor: $selectedColor
-                            )
-                            
-                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                                Text("Chip Text")
-                                    .font(.headline)
-                                TextField("e.g., Push, Pull, Legs...", text: $chipText)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .background(
-                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                            .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                    )
-                            }
-                        }
-                        .padding(DesignSystem.Spacing.large)
-                    }
-                }
-            }
-        }
-    }
-    
-    private func create() {
-        let newWorkout = Workout(
-            userId: "user123",
-            name: workoutName,
-            sectionId: section.id,
-            iconName: selectedIcon.systemName,
-            colorName: selectedColor.name,
-            chipText: chipText.isEmpty ? "New" : chipText
-        )
-        section.workouts.append(newWorkout)
-        dismiss()
-    }
-}
+
+
+
 
 // MARK: - Workout Card
 struct WorkoutCard: View {
     @Binding var workout: Workout
     var onDelete: (() -> Void)? = nil
+    var isDragging: Bool = false
     @State private var showingWorkoutDetails = false
     @Environment(\.colorScheme) private var colorScheme
     
@@ -752,9 +552,9 @@ struct WorkoutCard: View {
                     
                     Spacer()
                     
-                    // Custom chip text badge
+                    // Exercise count badge
                     GradientBadge(
-                        text: workout.chipText.isEmpty ? "\(workout.exercises.count + workout.circuits.count)" : workout.chipText,
+                        text: "\(workout.exercises.count + workout.circuits.count)",
                         gradient: LinearGradient(colors: [workoutColor.color, workoutColor.color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
                     )
                 }
@@ -788,18 +588,17 @@ struct WorkoutCard: View {
                     .fill(DesignSystem.Colors.cardBackground(for: colorScheme))
                     .overlay(
                         RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.large)
-                            .fill(workoutColor.color)
-                            .mask(
-                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.large)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [Color.white.opacity(0.8), Color.clear],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        workoutColor.color.opacity(colorScheme == .dark ? 0.25 : 0.15),
+                                        workoutColor.color.opacity(colorScheme == .dark ? 0.1 : 0.05),
+                                        Color.white.opacity(colorScheme == .dark ? 0.05 : 0.03)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                            .opacity(colorScheme == .dark ? 0.15 : 0.08)
                     )
             )
             .shadow(
@@ -808,10 +607,15 @@ struct WorkoutCard: View {
                 x: DesignSystem.Shadows.adaptive(for: colorScheme).x,
                 y: DesignSystem.Shadows.adaptive(for: colorScheme).y
             )
+            .opacity(isDragging ? 0.6 : 1.0)
+            .scaleEffect(isDragging ? 0.95 : 1.0)
+            .animation(.easeInOut(duration: 0.2), value: isDragging)
         }
         .buttonStyle(PlainButtonStyle())
-        .sheet(isPresented: $showingWorkoutDetails) {
-            WorkoutDetailView(workout: $workout, onDelete: onDelete)
+        .fullScreenCover(isPresented: $showingWorkoutDetails) {
+            WorkoutDetailView(workout: $workout, onDelete: onDelete, onDismiss: {
+                showingWorkoutDetails = false
+            })
         }
     }
 }
@@ -820,14 +624,14 @@ struct WorkoutCard: View {
 struct WorkoutDetailView: View {
     @Binding var workout: Workout
     var onDelete: (() -> Void)? = nil
-    @Environment(\.dismiss) private var dismiss
+    var onDismiss: (() -> Void)? = nil
     @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var sessionManager = SessionManager.shared
     @State private var showingAddExercise = false
     @State private var showingEditWorkout = false
     @State private var showingEditExercise = false
     @State private var editingExerciseIndex: Int? = nil
     @State private var confirmDelete = false
-    @State private var shouldNavigateToSessions = false
     
     private var workoutIcon: WorkoutIcon {
         WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? 
@@ -845,7 +649,7 @@ struct WorkoutDetailView: View {
                 DesignSystem.Colors.background(for: colorScheme)
                     .ignoresSafeArea()
                 
-                VStack(spacing: DesignSystem.Spacing.large) {
+                VStack(spacing: 0) {
                     // Header
                     HStack {
                         Image(systemName: workoutIcon.systemName)
@@ -884,18 +688,51 @@ struct WorkoutDetailView: View {
                             Button("Cancel", role: .cancel) {}
                             Button("Delete", role: .destructive) {
                                 onDelete?()
-                                dismiss()
                             }
                         }
 
-                        Button("Close") {
-                            dismiss()
-                        }
-                        .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+
                     }
                     .padding(DesignSystem.Spacing.large)
                     
-                    ExercisesListView(workout: $workout)
+                    // Scrollable content with persistent header/footer
+                    ZStack {
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                ExercisesListView(workout: $workout)
+                                    .frame(maxWidth: .infinity, alignment: .top)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        
+                        // Top gradient indicator
+                        VStack {
+                            LinearGradient(
+                                colors: [
+                                    DesignSystem.Colors.background(for: colorScheme),
+                                    DesignSystem.Colors.background(for: colorScheme).opacity(0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 20)
+                            Spacer()
+                        }
+                        
+                        // Bottom gradient indicator
+                        VStack {
+                            Spacer()
+                            LinearGradient(
+                                colors: [
+                                    DesignSystem.Colors.background(for: colorScheme).opacity(0),
+                                    DesignSystem.Colors.background(for: colorScheme)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 20)
+                        }
+                    }
                     
                     // Start Workout Button
                     GradientButton(
@@ -904,25 +741,51 @@ struct WorkoutDetailView: View {
                     ) {
                         startWorkoutSession()
                     }
+                    .disabled(workout.exercises.isEmpty && workout.circuits.isEmpty)
+                    .opacity((workout.exercises.isEmpty && workout.circuits.isEmpty) ? 0.5 : 1.0)
                     .padding(.horizontal, DesignSystem.Spacing.large)
                     .padding(.bottom, DesignSystem.Spacing.large)
                 }
             }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Back") {
+                        // Dismiss the full screen cover
+                        onDismiss?()
+                    }
+                    .foregroundColor(DesignSystem.Colors.primary)
+                }
+            }
+            .toolbar(.hidden, for: .tabBar)
         }
         .sheet(isPresented: $showingAddExercise) {
-            AddExerciseView { newExercise in
-                workout.exercises.append(newExercise)
-            }
+            AddExerciseView(
+                onAdd: { newExercise in
+                    workout.exercises.append(newExercise)
+                },
+                onAddCircuit: { circuit, exercises in
+                    // Add circuit and its exercises
+                    workout.circuits.append(circuit)
+                    workout.exercises.append(contentsOf: exercises)
+                }
+            )
+            .presentationDetents([.large])
         }
         .sheet(isPresented: $showingEditWorkout) {
             EditWorkoutView(workout: $workout)
+                .presentationDetents([.large])
         }
-        // Placeholder for future edit sheet if needed
+        .onChange(of: sessionManager.shouldNavigateToSessions) { _, shouldNavigate in
+            if shouldNavigate {
+                // Close the modal when session is started
+                onDismiss?()
+            }
+        }
     }
     
     private func startWorkoutSession() {
         SessionManager.shared.startSession(from: workout)
-        dismiss()
     }
 }
 // SetEditorRow moved to Features/Workouts/Views/SetEditorRow.swift
@@ -939,8 +802,7 @@ struct EditWorkoutView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var tempName: String = ""
     @State private var tempChip: String = ""
-    @State private var selectedIcon: WorkoutIcon = WorkoutIcon(systemName: "dumbbell", displayName: "Dumbbell", category: "Strength")
-    @State private var selectedColor: WorkoutColor = WorkoutColor(color: .blue, name: "Blue", isDark: false)
+
     
     var body: some View {
         NavigationView {
@@ -960,7 +822,7 @@ struct EditWorkoutView: View {
                                 )
                         }
                         
-                        WorkoutIconColorSelector(selectedIcon: $selectedIcon, selectedColor: $selectedColor)
+
                         
                         VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
                             Text("Chip Text")
@@ -989,17 +851,13 @@ struct EditWorkoutView: View {
     private func load() {
         tempName = workout.name
         tempChip = workout.chipText
-        selectedIcon = WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? 
-            WorkoutIcon(systemName: "dumbbell", displayName: "Dumbbell", category: "Strength")
-        selectedColor = WorkoutColor.allColors.first { $0.name == workout.colorName } ?? 
-            WorkoutColor(color: .blue, name: "Blue", isDark: false)
     }
     
     private func save() {
         workout.name = tempName
         workout.chipText = tempChip
-        workout.iconName = selectedIcon.systemName
-        workout.colorName = selectedColor.name
+        workout.iconName = "dumbbell"
+        workout.colorName = "Blue"
         dismiss()
     }
 }

@@ -80,56 +80,13 @@ class SessionManager: ObservableObject {
     
     private func loadSessions() {
         // TODO: Load from Firebase when integrated
-        // For now, load mock data
-        pastSessions = [
-            Session(
-                userId: "user123",
-                workoutId: "workout1",
-                status: .finished,
-                startedAt: Date().addingTimeInterval(-3600),
-                completedAt: Date().addingTimeInterval(-1800),
-                exercises: [],
-                circuits: [],
-                notes: "Great workout!"
-            ),
-            Session(
-                userId: "user123",
-                workoutId: "workout2",
-                status: .finished,
-                startedAt: Date().addingTimeInterval(-7200),
-                completedAt: Date().addingTimeInterval(-5400),
-                exercises: [],
-                circuits: [],
-                notes: "Felt strong today"
-            )
-        ]
+        // For now, start with empty state
+        pastSessions = []
     }
     
     private func loadWorkouts() {
         // TODO: Load from Firebase when integrated
-        // For now, load mock data
-        workouts = [
-            Workout(
-                id: "workout1",
-                userId: "user123",
-                name: "Push Day",
-                exercises: [],
-                circuits: []
-            ),
-            Workout(
-                id: "workout2",
-                userId: "user123",
-                name: "Pull Day",
-                exercises: [],
-                circuits: []
-            ),
-            Workout(
-                id: "workout3",
-                userId: "user123",
-                name: "Circuit Training",
-                exercises: [],
-                circuits: []
-            )
-        ]
+        // For now, start with empty state
+        workouts = []
     }
 }

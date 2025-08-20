@@ -24,7 +24,7 @@ struct ContentView: View {
             SessionsView()
                 .tabItem {
                     Image(systemName: "timer")
-                    Text("Sessions")
+                    Text("Workout Sessions")
                 }
                 .tag(1)
             
@@ -97,14 +97,11 @@ struct ProfileView: View {
                     soundsEnabled: $soundsEnabled
                 )
             
-                // Information Section
-                ProfileInformationSection()
-                
-                // Version Section
-                ProfileVersionSection()
-                
                 // Support Section
                 ProfileSupportSection()
+            
+                // Version Section
+                ProfileVersionSection()
             }
             .navigationTitle("Profile")
             .sheet(isPresented: $showingRestTimePicker) {
@@ -112,6 +109,7 @@ struct ProfileView: View {
                     selectedTime: $defaultRestTime,
                     isPresented: $showingRestTimePicker
                 )
+                .presentationDetents([.medium])
             }
             .sheet(isPresented: $showingPersonalInfo) {
                 PersonalInfoView()
@@ -172,7 +170,7 @@ struct ProfileGeneralSection: View {
                 showingRestTimePicker = true
             }) {
                 HStack {
-                    Image(systemName: "timer")
+                    Image(systemName: "timer.fill")
                         .font(.body)
                         .foregroundColor(.orange)
                         .frame(width: 24, height: 24)
@@ -194,7 +192,7 @@ struct ProfileGeneralSection: View {
             .buttonStyle(PlainButtonStyle())
             
             HStack {
-                Image(systemName: "scalemass")
+                Image(systemName: "scalemass.fill")
                     .font(.body)
                     .foregroundColor(.green)
                     .frame(width: 24, height: 24)
@@ -286,58 +284,6 @@ struct ProfileNotificationsSection: View {
     }
 }
 
-struct ProfileInformationSection: View {
-    @Environment(\.colorScheme) private var colorScheme
-    
-    var body: some View {
-        Section {
-            Button(action: {
-                // Help & Support action
-            }) {
-                HStack {
-                    Image(systemName: "questionmark.circle")
-                        .font(.body)
-                        .foregroundColor(.blue)
-                        .frame(width: 24, height: 24)
-                    
-                    Text("Help & Support")
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            Button(action: {
-                // Rate App action
-            }) {
-                HStack {
-                    Image(systemName: "star")
-                        .font(.body)
-                        .foregroundColor(.yellow)
-                        .frame(width: 24, height: 24)
-                    
-                    Text("Rate App")
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
-        } header: {
-            Text("Information")
-        }
-    }
-}
-
 struct ProfileVersionSection: View {
     @Environment(\.colorScheme) private var colorScheme
     
@@ -425,61 +371,34 @@ struct RestTimePickerView: View {
     private let restTimeOptions = Array(0...300)
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                // Header
-                HStack {
-                    Image(systemName: "timer")
-                        .font(.title)
-                        .foregroundColor(.orange)
-                    
-                    Text("Select Default Rest Time")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                    
-                    Spacer()
-                }
-                .padding(.horizontal)
-                
-                // Picker
-                Picker("Rest Time", selection: $selectedTime) {
-                    ForEach(restTimeOptions, id: \.self) { seconds in
-                        Text("\(seconds) seconds").tag(seconds)
-                    }
-                }
-                .pickerStyle(WheelPickerStyle())
-                .frame(height: 200)
-                
-                // Buttons
-                HStack(spacing: 20) {
-                    Button("Cancel") {
-                        isPresented = false
-                    }
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 30)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color(.systemGray5))
-                    )
-                    
-                    Button("Done") {
-                        isPresented = false
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 30)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(.blue)
-                    )
-                }
+        VStack(spacing: 20) {
+            // Header
+            HStack {
+                Text("Default Rest Time")
+                    .font(.title2)
+                    .fontWeight(.semibold)
                 
                 Spacer()
+                
+                Button("Done") {
+                    isPresented = false
+                }
+                .foregroundColor(.blue)
             }
-            .padding(.top)
-            .navigationBarHidden(true)
+            .padding(.horizontal)
+            
+            // Picker
+            Picker("Rest Time", selection: $selectedTime) {
+                ForEach(restTimeOptions, id: \.self) { seconds in
+                    Text("\(seconds) seconds").tag(seconds)
+                }
+            }
+            .pickerStyle(WheelPickerStyle())
+            .frame(height: 150)
+            
+            Spacer()
         }
+        .padding(.top)
     }
 }
 

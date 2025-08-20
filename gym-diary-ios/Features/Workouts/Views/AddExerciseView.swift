@@ -24,19 +24,17 @@ struct AddExerciseView: View {
     private enum Mode { case add, edit }
     private let mode: Mode
     private let onAdd: ((Exercise) -> Void)?
-    private let onAddCircuit: (([Exercise]) -> Void)? // NEW: Callback for circuit creation
+    private let onAddCircuit: ((Circuit, [Exercise]) -> Void)? // NEW: Callback for circuit creation
     private let applyEdit: ((inout Exercise) -> Void)?
     @State private var searchText = ""
-    @State private var selectedExerciseName: String? = nil
+    @State private var selectedExerciseNames: Set<String> = [] // Multiple selection support
     @State private var selectedVariants: Set<ExerciseVariant> = []
     @State private var note: String = ""
-    @State private var variantEnabled: Bool = false
+
     @State private var notesEnabled: Bool = false
-    @State private var isCircuitMode: Bool = false // NEW: Circuit mode toggle
-    @State private var selectedExercises: Set<String> = [] // NEW: Multi-selection for circuits
     @AppStorage("defaultRestTime") private var defaultRestTime: Int = 60
     @State private var selectedBodyPart: BodyPart? = nil
-    @State private var selectedType: ExerciseCategory? = nil
+    @State private var selectedType: ExerciseCategory = .dumbbells // Default type that will be prepended
     
     private let catalog: [String] = [
         "Bench Press", "Incline Bench Press", "Overhead Press",
@@ -64,9 +62,7 @@ struct AddExerciseView: View {
         if let body = selectedBodyPart {
             items = items.filter { name in meta[name]?.body == body }
         }
-        if let type = selectedType {
-            items = items.filter { name in meta[name]?.type == type }
-        }
+        // Type is no longer a filter, it will be prepended to the exercise name
         if q.isEmpty { return items }
         return items.filter { $0.localizedCaseInsensitiveContains(q) }
     }
@@ -77,197 +73,166 @@ struct AddExerciseView: View {
                 DesignSystem.Colors.background(for: colorScheme)
                     .ignoresSafeArea()
                 
-                VStack(spacing: DesignSystem.Spacing.large) {
-                    TextField("Search exercises", text: $searchText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                VStack(spacing: 0) {
+                    // Fixed header section
+                    VStack(spacing: DesignSystem.Spacing.medium) {
+                        TextField("Search exercises", text: $searchText)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .padding(.horizontal, DesignSystem.Spacing.large)
+                        
+                        // Selection info
+                        HStack {
+                            if !selectedExerciseNames.isEmpty {
+                                Text("\(selectedExerciseNames.count) exercise\(selectedExerciseNames.count == 1 ? "" : "s") selected")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(DesignSystem.Colors.primary)
+                            }
+                            
+                            Spacer()
+                        }
                         .padding(.horizontal, DesignSystem.Spacing.large)
-                    
-                    // Filters
-                    HStack(spacing: DesignSystem.Spacing.large) {
-                        // Body Part
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Body Part")
-                                .font(.headline)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                            Menu {
-                                Button("All") { selectedBodyPart = nil }
-                                ForEach(BodyPart.allCases) { bp in
-                                    Button(bp.displayName) { selectedBodyPart = bp }
-                                }
-                            } label: {
-                                HStack {
-                                    Text(selectedBodyPart?.displayName ?? "All")
-                                    Image(systemName: "chevron.down")
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray5)))
-                            }
-                        }
-                        // Type
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Type")
-                                .font(.headline)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                            Menu {
-                                Button("All") { selectedType = nil }
-                                ForEach(ExerciseCategory.allCases, id: \.self) { cat in
-                                    Button(cat.displayName) { selectedType = cat }
-                                }
-                            } label: {
-                                HStack {
-                                    Text(selectedType?.displayName ?? "All")
-                                    Image(systemName: "chevron.down")
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray5)))
-                            }
-                        }
-                        Spacer()
-                    }
-                    .padding(.horizontal, DesignSystem.Spacing.large)
-                    
-                    // Circuit Mode Toggle
-                    HStack {
-                        Text("Mode")
-                            .font(.headline)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        Spacer()
-                        Picker("Circuit Mode", selection: $isCircuitMode) {
-                            Text("Single Exercise").tag(false)
-                            Text("Circuit").tag(true)
-                        }
-                        .pickerStyle(.segmented)
-                        .frame(width: 200)
-                    }
-                    .padding(.horizontal, DesignSystem.Spacing.large)
-                    
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                            ForEach(filtered, id: \.self) { name in
-                                Button(action: {
-                                    if isCircuitMode {
-                                        // Multi-selection for circuits
-                                        if selectedExercises.contains(name) {
-                                            selectedExercises.remove(name)
-                                        } else {
-                                            selectedExercises.insert(name)
-                                        }
-                                    } else {
-                                        // Single selection for exercises
-                                        selectedExerciseName = name
+                        
+                        // Filters
+                        HStack(spacing: DesignSystem.Spacing.large) {
+                            // Body Part
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Body Part")
+                                    .font(.headline)
+                                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                                Menu {
+                                    Button("All") { selectedBodyPart = nil }
+                                    ForEach(BodyPart.allCases) { bp in
+                                        Button(bp.displayName) { selectedBodyPart = bp }
                                     }
-                                }) {
+                                } label: {
                                     HStack {
-                                        Text(name)
-                                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                                        Spacer()
-                                        if isCircuitMode {
-                                            // Show checkmark for selected exercises in circuit mode
-                                            if selectedExercises.contains(name) {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .foregroundColor(.orange)
-                                            }
-                                        } else {
-                                            // Show checkmark for selected exercise in single mode
-                                            if selectedExerciseName == name {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .foregroundColor(DesignSystem.Colors.primary)
-                                            }
-                                        }
+                                        Text(selectedBodyPart?.displayName ?? "All")
+                                        Image(systemName: "chevron.down")
                                     }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray5)))
                                 }
-                                .buttonStyle(PlainButtonStyle())
-                                .padding(.horizontal, DesignSystem.Spacing.large)
-                                .padding(.vertical, 6)
                             }
-                        }
-                    }
-                    
-                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                        HStack {
-                            Text("Variant")
-                                .font(.headline)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                            // Type (now prepended to exercise name)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Type")
+                                    .font(.headline)
+                                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                                Menu {
+                                    ForEach(ExerciseCategory.allCases, id: \.self) { cat in
+                                        Button(cat.displayName) { selectedType = cat }
+                                    }
+                                } label: {
+                                    HStack {
+                                        Text(selectedType.displayName)
+                                        Image(systemName: "chevron.down")
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray5)))
+                                }
+                            }
                             Spacer()
-                            Picker("Variant Enabled", selection: $variantEnabled) {
-                                Text("No").tag(false)
-                                Text("Yes").tag(true)
-                            }
-                            .pickerStyle(.segmented)
-                            .frame(width: 140)
                         }
-                        if variantEnabled {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(allowedVariants(), id: \.self) { v in
-                                        let isSelected = selectedVariants.contains(v)
+                        .padding(.horizontal, DesignSystem.Spacing.large)
+                    }
+                    .padding(.top, DesignSystem.Spacing.medium)
+                    .padding(.bottom, DesignSystem.Spacing.small)
+                    
+                    // Main scrollable content
+                    ScrollView {
+                        VStack(spacing: DesignSystem.Spacing.large) {
+                            // Exercise list
+                            LazyVStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                                ForEach(filtered, id: \.self) { name in
+                                    VStack(spacing: 0) {
+                                        // Exercise selection button
                                         Button(action: {
-                                            if isSelected { selectedVariants.remove(v) } else { selectedVariants.insert(v) }
+                                            if selectedExerciseNames.contains(name) {
+                                                selectedExerciseNames.remove(name)
+                                            } else {
+                                                selectedExerciseNames.insert(name)
+                                            }
                                         }) {
-                                            Text(v.displayName)
-                                                .foregroundColor(isSelected ? .white : DesignSystem.Colors.textPrimary(for: colorScheme))
-                                                .padding(8)
-                                                .background(
-                                                    RoundedRectangle(cornerRadius: 8)
-                                                        .fill(isSelected ? DesignSystem.Colors.primary : Color(.systemGray5))
-                                                )
+                                            HStack {
+                                                Text("\(selectedType.displayName) \(name)")
+                                                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                                                Spacer()
+                                                // Show checkmark for selected exercise(s)
+                                                if selectedExerciseNames.contains(name) {
+                                                    Image(systemName: "checkmark.circle.fill")
+                                                        .foregroundColor(DesignSystem.Colors.primary)
+                                                }
+                                            }
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                        .padding(.horizontal, DesignSystem.Spacing.large)
+                                        .padding(.vertical, 6)
+                                        
+                                        // Show variants directly under selected exercise
+                                        if selectedExerciseNames.contains(name) {
+                                            exerciseVariantSection(for: name)
                                         }
                                     }
                                 }
-                                .padding(.horizontal, 4)
                             }
+                            
+                            // Notes section
+                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                                HStack {
+                                    HStack(spacing: 8) {
+                                        Text("Notes")
+                                            .font(.headline)
+                                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                                        Image(systemName: "pencil")
+                                            .foregroundColor(.blue)
+                                            .font(.caption)
+                                    }
+                                    Spacer()
+                                    Picker("Notes Enabled", selection: $notesEnabled) {
+                                        Text("No").tag(false)
+                                        Text("Yes").tag(true)
+                                    }
+                                    .pickerStyle(.segmented)
+                                    .frame(width: 140)
+                                }
+                                if notesEnabled {
+                                    TextEditor(text: $note)
+                                        .frame(minHeight: 120)
+                                        .padding(12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                                .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
+                                        )
+                                }
+                            }
+                            .padding(.horizontal, DesignSystem.Spacing.large)
+                            .padding(.bottom, DesignSystem.Spacing.large)
                         }
                     }
-                    .padding(.horizontal, DesignSystem.Spacing.large)
-                    
-                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                        HStack {
-                            Text("Notes")
-                                .font(.headline)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                            Spacer()
-                            Picker("Notes Enabled", selection: $notesEnabled) {
-                                Text("No").tag(false)
-                                Text("Yes").tag(true)
-                            }
-                            .pickerStyle(.segmented)
-                            .frame(width: 140)
-                        }
-                        if notesEnabled {
-                            TextEditor(text: $note)
-                                .frame(minHeight: 80)
-                                .padding(8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                        .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                )
-                        }
-                    }
-                    .padding(.horizontal, DesignSystem.Spacing.large)
-                    .padding(.bottom, DesignSystem.Spacing.large)
                 }
             }
-            .navigationTitle(mode == .add ? (isCircuitMode ? "Add Circuit" : "Add Exercise") : "Edit Exercise")
+            .frame(maxHeight: .infinity)
+            .navigationTitle(mode == .add ? "Add Exercise" : "Edit Exercise")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(mode == .add ? (isCircuitMode ? "Create Circuit" : "Add Exercise") : "Save") {
+                    Button(mode == .add ? (selectedExerciseNames.count > 1 ? "Create Circuit" : "Add Exercise") : "Save") {
                         if mode == .add { finishAdd() } else { finishEdit() }
                     }
-                    .disabled(isCircuitMode ? selectedExercises.isEmpty : selectedExerciseName == nil)
+                    .disabled(selectedExerciseNames.isEmpty)
                 }
             }
         }
-        .onChange(of: variantEnabled) { oldValue, newValue in
-            if !newValue { selectedVariants.removeAll() }
-        }
+
         .onChange(of: notesEnabled) { oldValue, newValue in
             if !newValue { note = "" }
         }
+
     }
     
     private func allowedVariants() -> [ExerciseVariant] {
@@ -283,36 +248,112 @@ struct AddExerciseView: View {
             "Tricep Pushdown": [.rope, .cable, .reverseGrip],
             "Leg Press": [.pause]
         ]
-        if let name = selectedExerciseName, let list = mapping[name] { return list }
+        // For now, return all variants since we're in multi-select mode
+        // TODO: Implement variant filtering for selected exercises
         return ExerciseVariant.allCases
     }
     
+
+    
+    private func exerciseVariantSection(for exerciseName: String) -> some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+            // Variant selection
+            HStack {
+                Text("Variants")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                Spacer()
+            }
+            .padding(.horizontal, DesignSystem.Spacing.large)
+            .padding(.top, 8)
+            
+            // Variant options
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    // None option (preselected)
+                    let noneSelected = selectedVariants.isEmpty
+                    
+                    Button(action: {
+                        selectedVariants.removeAll()
+                    }) {
+                        Text("None")
+                            .foregroundColor(noneSelected ? .white : DesignSystem.Colors.textPrimary(for: colorScheme))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(noneSelected ? DesignSystem.Colors.primary : Color(.systemGray5))
+                            )
+                    }
+                    
+                    // Available variants
+                    ForEach(allowedVariants(), id: \.self) { variant in
+                        let isSelected = selectedVariants.contains(variant)
+                        
+                        Button(action: {
+                            if isSelected {
+                                selectedVariants.remove(variant)
+                            } else {
+                                selectedVariants.insert(variant)
+                            }
+                        }) {
+                            Text(variant.displayName)
+                                .foregroundColor(isSelected ? .white : DesignSystem.Colors.textPrimary(for: colorScheme))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(isSelected ? DesignSystem.Colors.primary : Color(.systemGray5))
+                                )
+                        }
+                    }
+                }
+                .padding(.horizontal, DesignSystem.Spacing.large)
+                .padding(.bottom, 8)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.small)
+                .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
+        )
+        .padding(.horizontal, DesignSystem.Spacing.large)
+        .padding(.bottom, 8)
+    }
+    
     private func finishAdd() {
-        if isCircuitMode {
+        if selectedExerciseNames.count > 1 {
             // Create circuit with multiple exercises
-            let circuitExercises = selectedExercises.compactMap { name -> Exercise? in
+            let exercises = selectedExerciseNames.map { name in
                 let resolvedCategory = meta[name]?.type ?? selectedType ?? .other
+                let fullName = "\(selectedType.displayName) \(name)"
                 return Exercise(
                     workoutId: "temp",
-                    name: name,
+                    name: fullName,
                     category: resolvedCategory,
-                    variants: [], // No variants for circuit exercises initially
+                    variants: [], // No variants for circuit exercises
                     sets: [],
                     order: 0,
                     restTime: defaultRestTime,
-                    notes: nil,
-                    isCircuit: true,
-                    circuitId: UUID().uuidString // Temporary ID, will be updated when added to workout
+                    notes: nil
                 )
             }
-            onAddCircuit?(circuitExercises)
+            
+            let circuit = Circuit(
+                workoutId: "temp",
+                exerciseIds: exercises.map { $0.id },
+                order: 0
+            )
+            
+            onAddCircuit?(circuit, exercises)
         } else {
             // Create single exercise
-            guard let name = selectedExerciseName else { return }
+            let name = selectedExerciseNames.first!
             let resolvedCategory = meta[name]?.type ?? selectedType ?? .other
+            let fullName = "\(selectedType.displayName) \(name)"
             let exercise = Exercise(
                 workoutId: "temp",
-                name: name,
+                name: fullName,
                 category: resolvedCategory,
                 variants: Array(selectedVariants),
                 sets: [],
@@ -327,7 +368,7 @@ struct AddExerciseView: View {
     
     private func finishEdit() {
         guard var dummy = currentEditingExercise else { return }
-        guard let name = selectedExerciseName else { return }
+        guard let name = selectedExerciseNames.first else { return }
         dummy.name = name
         dummy.variants = Array(selectedVariants)
         dummy.notes = notesEnabled ? (note.isEmpty ? nil : note) : nil
@@ -343,33 +384,47 @@ struct AddExerciseView: View {
         self.onAddCircuit = nil
         self.applyEdit = nil
         self._searchText = State(initialValue: "")
-        self._selectedExerciseName = State(initialValue: nil)
+        self._selectedExerciseNames = State(initialValue: [])
         self._selectedVariants = State(initialValue: [])
         self._note = State(initialValue: "")
-        self._variantEnabled = State(initialValue: false)
+
         self._notesEnabled = State(initialValue: false)
-        self._isCircuitMode = State(initialValue: false)
-        self._selectedExercises = State(initialValue: [])
         self._selectedBodyPart = State(initialValue: nil)
-        self._selectedType = State(initialValue: nil)
+        self._selectedType = State(initialValue: .dumbbells)
         self.currentEditingExercise = nil
     }
     
-    init(onAddCircuit: @escaping ([Exercise]) -> Void) {
+    init(onAddCircuit: @escaping (Circuit, [Exercise]) -> Void) {
         self.mode = .add
         self.onAdd = nil
         self.onAddCircuit = onAddCircuit
         self.applyEdit = nil
         self._searchText = State(initialValue: "")
-        self._selectedExerciseName = State(initialValue: nil)
+        self._selectedExerciseNames = State(initialValue: [])
         self._selectedVariants = State(initialValue: [])
         self._note = State(initialValue: "")
-        self._variantEnabled = State(initialValue: false)
+
         self._notesEnabled = State(initialValue: false)
-        self._isCircuitMode = State(initialValue: true) // Start in circuit mode
-        self._selectedExercises = State(initialValue: [])
         self._selectedBodyPart = State(initialValue: nil)
-        self._selectedType = State(initialValue: nil)
+        self._selectedType = State(initialValue: .dumbbells)
+        self.currentEditingExercise = nil
+    }
+
+    // New initializer that accepts both single exercise and circuit callbacks
+    init(onAdd: @escaping (Exercise) -> Void,
+         onAddCircuit: @escaping (Circuit, [Exercise]) -> Void) {
+        self.mode = .add
+        self.onAdd = onAdd
+        self.onAddCircuit = onAddCircuit
+        self.applyEdit = nil
+        self._searchText = State(initialValue: "")
+        self._selectedExerciseNames = State(initialValue: [])
+        self._selectedVariants = State(initialValue: [])
+        self._note = State(initialValue: "")
+
+        self._notesEnabled = State(initialValue: false)
+        self._selectedBodyPart = State(initialValue: nil)
+        self._selectedType = State(initialValue: .dumbbells)
         self.currentEditingExercise = nil
     }
     
@@ -384,20 +439,19 @@ struct AddExerciseView: View {
         }
         let ex = exercise.wrappedValue
         self._searchText = State(initialValue: ex.name)
-        self._selectedExerciseName = State(initialValue: ex.name)
+        self._selectedExerciseNames = State(initialValue: [ex.name])
         self._selectedVariants = State(initialValue: Set(ex.variants))
         self._note = State(initialValue: ex.notes ?? "")
-        self._variantEnabled = State(initialValue: !ex.variants.isEmpty)
+
         self._notesEnabled = State(initialValue: (ex.notes ?? "").isEmpty == false)
-        self._isCircuitMode = State(initialValue: false)
-        self._selectedExercises = State(initialValue: [])
         self._selectedBodyPart = State(initialValue: nil)
-        self._selectedType = State(initialValue: nil)
+        self._selectedType = State(initialValue: .dumbbells)
         self.currentEditingExercise = ex
     }
     
     // Stored just to snapshot original when entering edit
     private var currentEditingExercise: Exercise?
 }
+
 
 

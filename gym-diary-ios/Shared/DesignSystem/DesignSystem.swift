@@ -68,11 +68,11 @@ struct DesignSystem {
         
         // Theme-aware gradients
         static func cardGradient(for colorScheme: ColorScheme) -> LinearGradient {
-            let opacity = colorScheme == .dark ? 0.15 : 0.08
             return LinearGradient(
                 colors: [
-                    Color.blue.opacity(opacity),
-                    Color.purple.opacity(opacity)
+                    Color.blue.opacity(colorScheme == .dark ? 0.25 : 0.15),
+                    Color.blue.opacity(colorScheme == .dark ? 0.1 : 0.05),
+                    Color.white.opacity(colorScheme == .dark ? 0.05 : 0.03)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing

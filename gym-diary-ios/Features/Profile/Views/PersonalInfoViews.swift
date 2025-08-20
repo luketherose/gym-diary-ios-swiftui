@@ -20,43 +20,29 @@ struct PersonalInfoView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                DesignSystem.Colors.background(for: colorScheme)
+                Color(.systemGroupedBackground)
                     .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: DesignSystem.Spacing.large) {
-                        PersonalInfoPhotoSection()
-                        PersonalInfoDetailsSection(
-                            firstName: $firstName,
-                            lastName: $lastName,
-                            email: $email,
-                            phone: $phone,
-                            birthDate: $birthDate
-                        )
-                        PersonalInfoPhysicalSection(
-                            height: $height,
-                            weight: $weight
-                        )
-                        PersonalInfoAccountSection(
-                            registrationDate: registrationDate,
-                            showingPasswordChange: $showingPasswordChange
-                        )
-                        PersonalInfoDangerSection(
-                            showingDeleteAccount: $showingDeleteAccount
-                        )
-
+                    VStack(spacing: 0) {
+                        // Profile Photo Section
+                        profilePhotoSection
+                        
+                        // Personal Information Section
+                        personalInfoSection
+                        
+                        // Physical Information Section
+                        physicalInfoSection
+                        
+                        // Account Information Section
+                        accountInfoSection
+                        
+                        // Danger Zone Section
+                        dangerZoneSection
+                        
                         // App Version footer
-                        VStack { 
-                            Text(appVersionString())
-                                .font(.footnote)
-                                .foregroundColor(Color(.systemGray))
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, DesignSystem.Spacing.large)
-                        .padding(.bottom, DesignSystem.Spacing.large)
+                        appVersionFooter
                     }
-                    .padding(DesignSystem.Spacing.large)
                 }
             }
             .navigationTitle("Personal Information")
@@ -83,229 +69,206 @@ struct PersonalInfoView: View {
             }
         }
     }
-}
-
-// MARK: - Helpers
-private func appVersionString() -> String {
-    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
-    return "Version \(version) (\(build))"
-}
-
-// MARK: - Personal Info Sub-Components
-struct PersonalInfoPhotoSection: View {
-    @Environment(\.colorScheme) private var colorScheme
     
-    var body: some View {
-        CardContainer {
-            HStack {
-                Spacer()
-                VStack(spacing: DesignSystem.Spacing.medium) {
-                    GradientIcon(
-                        systemName: "person.circle.fill",
-                        gradient: DesignSystem.Gradients.primary,
-                        size: 80
-                    )
-                    
-                    Button("Change Photo") {
-                        // Mock action
-                    }
-                    .font(.subheadline)
-                    .foregroundColor(DesignSystem.Colors.primary)
-                }
-                Spacer()
+    // MARK: - Profile Photo Section
+    private var profilePhotoSection: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "person.circle.fill")
+                .font(.system(size: 80))
+                .foregroundColor(.blue)
+            
+            Button("Change Photo") {
+                // Mock action
             }
-            .padding(.vertical, DesignSystem.Spacing.small)
+            .font(.subheadline)
+            .foregroundColor(.blue)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(Color(.systemBackground))
+        .listRowInsets(EdgeInsets())
     }
-}
-
-struct PersonalInfoDetailsSection: View {
-    @Environment(\.colorScheme) private var colorScheme
-    @Binding var firstName: String
-    @Binding var lastName: String
-    @Binding var email: String
-    @Binding var phone: String
-    @Binding var birthDate: Date
     
-    var body: some View {
-        CardContainer {
-            VStack(spacing: DesignSystem.Spacing.medium) {
+    // MARK: - Personal Information Section
+    private var personalInfoSection: some View {
+        VStack(spacing: 0) {
+            SectionHeader(title: "Personal Information")
+            
+            VStack(spacing: 0) {
+                SettingsRow(title: "First Name", value: $firstName)
+                Divider()
+                SettingsRow(title: "Last Name", value: $lastName)
+                Divider()
+                SettingsRow(title: "Email", value: $email, keyboardType: .emailAddress)
+                Divider()
+                SettingsRow(title: "Phone", value: $phone, keyboardType: .phonePad)
+                Divider()
+                SettingsDateRow(title: "Birth Date", date: $birthDate)
+            }
+            .background(Color(.systemBackground))
+        }
+        .padding(.top, 20)
+    }
+    
+    // MARK: - Physical Information Section
+    private var physicalInfoSection: some View {
+        VStack(spacing: 0) {
+            SectionHeader(title: "Physical Information")
+            
+            VStack(spacing: 0) {
+                SettingsRow(title: "Height", value: $height, keyboardType: .numberPad, suffix: "cm")
+                Divider()
+                SettingsRow(title: "Weight", value: $weight, keyboardType: .numberPad, suffix: "kg")
+            }
+            .background(Color(.systemBackground))
+        }
+        .padding(.top, 20)
+    }
+    
+    // MARK: - Account Information Section
+    private var accountInfoSection: some View {
+        VStack(spacing: 0) {
+            SectionHeader(title: "Account Information")
+            
+            VStack(spacing: 0) {
                 HStack {
-                    Text("Personal Information")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                    Text("Registration Date")
+                        .foregroundColor(.primary)
                     Spacer()
+                    Text(registrationDate, style: .date)
+                        .foregroundColor(.secondary)
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
                 
-                VStack(spacing: DesignSystem.Spacing.medium) {
-                    PersonalInfoRow(title: "First Name", text: $firstName)
-                    PersonalInfoRow(title: "Last Name", text: $lastName)
-                    PersonalInfoRow(title: "Email", text: $email, keyboardType: .emailAddress)
-                    PersonalInfoRow(title: "Phone", text: $phone, keyboardType: .phonePad)
-                    PersonalInfoDateRow(title: "Birth Date", date: $birthDate)
-                }
-            }
-        }
-    }
-}
-
-struct PersonalInfoPhysicalSection: View {
-    @Environment(\.colorScheme) private var colorScheme
-    @Binding var height: String
-    @Binding var weight: String
-    
-    var body: some View {
-        CardContainer {
-            VStack(spacing: DesignSystem.Spacing.medium) {
-                HStack {
-                    Text("Physical Information")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                    Spacer()
-                }
-                
-                VStack(spacing: DesignSystem.Spacing.medium) {
-                    PersonalInfoRow(title: "Height (cm)", text: $height, keyboardType: .numberPad, suffix: "cm")
-                    PersonalInfoRow(title: "Weight (kg)", text: $weight, keyboardType: .numberPad, suffix: "kg")
-                }
-            }
-        }
-    }
-}
-
-struct PersonalInfoAccountSection: View {
-    @Environment(\.colorScheme) private var colorScheme
-    let registrationDate: Date
-    @Binding var showingPasswordChange: Bool
-    
-    var body: some View {
-        CardContainer {
-            VStack(spacing: DesignSystem.Spacing.medium) {
-                HStack {
-                    Text("Account Information")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                    Spacer()
-                }
-                
-                VStack(spacing: DesignSystem.Spacing.medium) {
-                    HStack {
-                        Text("Registration Date")
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        Spacer()
-                        Text(registrationDate, style: .date)
-                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                    }
-                    
-                    Button(action: {
-                        showingPasswordChange = true
-                    }) {
-                        HStack {
-                            Text("Change Password")
-                                .foregroundColor(DesignSystem.Colors.primary)
-                            Spacer()
-                            GradientIcon(
-                                systemName: "chevron.right",
-                                gradient: DesignSystem.Gradients.primary,
-                                size: 16
-                            )
-                        }
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-            }
-        }
-    }
-}
-
-struct PersonalInfoDangerSection: View {
-    @Environment(\.colorScheme) private var colorScheme
-    @Binding var showingDeleteAccount: Bool
-    
-    var body: some View {
-        CardContainer {
-            VStack(spacing: DesignSystem.Spacing.medium) {
-                HStack {
-                    Text("Danger Zone")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(DesignSystem.Colors.error)
-                    Spacer()
-                }
+                Divider()
                 
                 Button(action: {
-                    showingDeleteAccount = true
+                    showingPasswordChange = true
                 }) {
                     HStack {
-                        GradientIcon(
-                            systemName: "trash.fill",
-                            gradient: DesignSystem.Gradients.error,
-                            size: 20
-                        )
-                        
-                        Text("Delete Account")
-                            .foregroundColor(DesignSystem.Colors.error)
+                        Text("Change Password")
+                            .foregroundColor(.blue)
                         Spacer()
-                        
-                        GradientIcon(
-                            systemName: "chevron.right",
-                            gradient: DesignSystem.Gradients.error,
-                            size: 16
-                        )
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                 }
-                .buttonStyle(PlainButtonStyle())
             }
+            .background(Color(.systemBackground))
         }
+        .padding(.top, 20)
+    }
+    
+    // MARK: - Danger Zone Section
+    private var dangerZoneSection: some View {
+        VStack(spacing: 0) {
+            SectionHeader(title: "Danger Zone")
+            
+            Button(action: {
+                showingDeleteAccount = true
+            }) {
+                HStack {
+                    Text("Delete Account")
+                        .foregroundColor(.red)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            }
+            .background(Color(.systemBackground))
+        }
+        .padding(.top, 20)
+    }
+    
+    // MARK: - App Version Footer
+    private var appVersionFooter: some View {
+        VStack {
+            Text(appVersionString())
+                .font(.footnote)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 32)
+        .padding(.bottom, 20)
     }
 }
 
-struct PersonalInfoRow: View {
-    @Environment(\.colorScheme) private var colorScheme
+// MARK: - Section Header
+struct SectionHeader: View {
     let title: String
-    @Binding var text: String
+    
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+}
+
+// MARK: - Settings Row
+struct SettingsRow: View {
+    let title: String
+    @Binding var value: String
     var keyboardType: UIKeyboardType = .default
     var suffix: String?
     
     var body: some View {
         HStack {
             Text(title)
-                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                .foregroundColor(.primary)
             Spacer()
-            TextField(title, text: $text)
-                .multilineTextAlignment(.trailing)
-                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                .keyboardType(keyboardType)
-                .autocapitalization(keyboardType == .emailAddress ? .none : .sentences)
-            if let suffix = suffix {
-                Text(suffix)
-                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                    .font(.caption)
+            
+            HStack(spacing: 4) {
+                TextField("", text: $value)
+                    .keyboardType(keyboardType)
+                    .multilineTextAlignment(.trailing)
+                    .foregroundColor(.primary)
+                
+                if let suffix = suffix {
+                    Text(suffix)
+                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+                }
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
-struct PersonalInfoDateRow: View {
-    @Environment(\.colorScheme) private var colorScheme
+// MARK: - Settings Date Row
+struct SettingsDateRow: View {
     let title: String
     @Binding var date: Date
     
     var body: some View {
         HStack {
             Text(title)
-                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                .foregroundColor(.primary)
             Spacer()
             DatePicker("", selection: $date, displayedComponents: .date)
                 .labelsHidden()
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
+// MARK: - Password Change View
 struct PasswordChangeView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -316,111 +279,100 @@ struct PasswordChangeView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                DesignSystem.Colors.background(for: colorScheme)
+                Color(.systemGroupedBackground)
                     .ignoresSafeArea()
                 
-                VStack(spacing: DesignSystem.Spacing.large) {
-                    ModalContainer {
-                        VStack(spacing: DesignSystem.Spacing.large) {
-                            // Header
-                            HStack {
-                                GradientIcon(
-                                    systemName: "lock.fill",
-                                    gradient: DesignSystem.Gradients.primary,
-                                    size: 32
-                                )
-                                
-                                Text("Change Password")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                                
-                                Spacer()
-                            }
+                VStack(spacing: 24) {
+                    // Header
+                    VStack(spacing: 16) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(.blue)
+                        
+                        Text("Change Password")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.top, 20)
+                    
+                    // Form fields
+                    VStack(spacing: 20) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Current Password")
+                                .font(.headline)
+                                .foregroundColor(.primary)
                             
-                            // Form fields
-                            VStack(spacing: DesignSystem.Spacing.medium) {
-                                VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                                    Text("Current Password")
-                                        .font(.headline)
-                                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                                    
-                                    SecureField("Enter current password", text: $currentPassword)
-                                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                                        .background(
-                                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                                .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                        )
-                                }
-                                
-                                VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                                    Text("New Password")
-                                        .font(.headline)
-                                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                                    
-                                    SecureField("Enter new password", text: $newPassword)
-                                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                                        .background(
-                                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                                .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                        )
-                                }
-                                
-                                VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                                    Text("Confirm New Password")
-                                        .font(.headline)
-                                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                                    
-                                    SecureField("Confirm new password", text: $confirmPassword)
-                                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                                        .background(
-                                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                                .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                        )
-                                }
-                            }
+                            SecureField("Enter current password", text: $currentPassword)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("New Password")
+                                .font(.headline)
+                                .foregroundColor(.primary)
                             
-                            // Info text
-                            HStack {
-                                GradientIcon(
-                                    systemName: "info.circle.fill",
-                                    gradient: DesignSystem.Gradients.warning,
-                                    size: 16
-                                )
-                                
-                                Text("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.")
-                                    .font(.caption)
-                                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                                
-                                Spacer()
-                            }
+                            SecureField("Enter new password", text: $newPassword)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Confirm New Password")
+                                .font(.headline)
+                                .foregroundColor(.primary)
                             
-                            // Buttons
-                            HStack(spacing: DesignSystem.Spacing.medium) {
-                                Button("Cancel") {
-                                    dismiss()
-                                }
-                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                                .padding(.horizontal, DesignSystem.Spacing.large)
-                                .padding(.vertical, DesignSystem.Spacing.medium)
-                                .background(
-                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                        .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                )
-                                
-                                GradientButton(
-                                    title: "Save",
-                                    gradient: DesignSystem.Gradients.primary
-                                ) {
-                                    // Mock save action
-                                    dismiss()
-                                }
-                            }
+                            SecureField("Confirm new password", text: $confirmPassword)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
                         }
                     }
+                    
+                    // Info text
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.orange)
+                        
+                        Text("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Spacer()
+                    }
+                    
+                    Spacer()
+                    
+                    // Buttons
+                    VStack(spacing: 12) {
+                        Button("Save") {
+                            // Mock save action
+                            dismiss()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                        
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color(.systemGray5))
+                        .foregroundColor(.primary)
+                        .cornerRadius(8)
+                    }
                 }
-                .padding(DesignSystem.Spacing.large)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
             }
+            .navigationBarHidden(true)
         }
     }
+}
+
+// MARK: - Helpers
+private func appVersionString() -> String {
+    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
+    return "Version \(version) (\(build))"
 }

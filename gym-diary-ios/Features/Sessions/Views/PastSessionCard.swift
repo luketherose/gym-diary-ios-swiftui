@@ -124,13 +124,12 @@ struct PastSessionCard: View {
         status: .finished,
         startedAt: Date().addingTimeInterval(-3600),
         completedAt: Date().addingTimeInterval(-1800),
-        executionSeconds: 1800,
         exercises: [],
         circuits: [],
         notes: "Great workout! Felt strong today."
     )
     
-    return PastSessionCard(session: mockSession)
+    PastSessionCard(session: mockSession)
         .padding()
         .background(Color(.systemBackground))
 }
