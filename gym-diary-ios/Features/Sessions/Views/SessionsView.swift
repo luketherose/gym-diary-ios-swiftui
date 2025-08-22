@@ -10,7 +10,15 @@ import SwiftUI
 struct SessionsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var sessionManager = SessionManager.shared
+    @State private var selectedTab: SessionTab = .new
     @State private var showingWorkoutSelector = false
+    @State private var showingEmptyWorkout = false
+    
+    enum SessionTab: String, CaseIterable {
+        case new = "new"
+        case history = "history"
+        case search = "search"
+    }
     
     var body: some View {
         NavigationView {
@@ -18,95 +26,22 @@ struct SessionsView: View {
                 DesignSystem.Colors.background(for: colorScheme)
                     .ignoresSafeArea()
                 
-                VStack(spacing: DesignSystem.Spacing.large) {
-                    // Header
-                    HStack {
-                        Text("Workout Sessions")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                VStack(spacing: 0) {
+                    // Top Navigation Bar (like Apple Fitness+)
+                    topNavigationBar
+                    
+                    // Content based on selected tab
+                    TabView(selection: $selectedTab) {
+                        newSessionView
+                            .tag(SessionTab.new)
                         
-                        Spacer()
+                        historyView
+                            .tag(SessionTab.history)
                         
-                        if sessionManager.activeSession == nil {
-                            Button(action: {
-                                showingWorkoutSelector = true
-                            }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.title)
-                                    .foregroundColor(DesignSystem.Colors.primary)
-                            }
-                        }
+                        searchView
+                            .tag(SessionTab.search)
                     }
-                    .padding(.horizontal, DesignSystem.Spacing.large)
-                    .padding(.top, DesignSystem.Spacing.large)
-                    
-                    // Active Session Panel
-                    if let session = sessionManager.activeSession {
-                        ActiveSessionPanel(session: session) {
-                            sessionManager.completeSession(session)
-                        } onCancel: {
-                            sessionManager.cancelSession(session)
-                        }
-                        .padding(.horizontal, DesignSystem.Spacing.large)
-                    }
-                    
-                    // Past Sessions - Horizontal Scroll
-                    if !sessionManager.pastSessions.isEmpty {
-                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.medium) {
-                            Text("Previous Workouts")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                                .padding(.horizontal, DesignSystem.Spacing.large)
-                            
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                LazyHStack(spacing: DesignSystem.Spacing.medium) {
-                                    ForEach(sessionManager.pastSessions) { session in
-                                        CompactSessionCard(session: session)
-                                    }
-                                }
-                                .padding(.horizontal, DesignSystem.Spacing.large)
-                            }
-                        }
-                    } else {
-                        // Empty State
-                        VStack(spacing: DesignSystem.Spacing.large) {
-                            Image(systemName: "timer")
-                                .font(.system(size: 60))
-                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                            
-                            Text("No Sessions Yet")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                            
-                            Text("Start your first workout session to begin tracking your progress")
-                                .font(.body)
-                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-                                .multilineTextAlignment(.center)
-                            
-                            if sessionManager.activeSession == nil {
-                                Button(action: {
-                                    showingWorkoutSelector = true
-                                }) {
-                                    Text("Start Session")
-                                        .font(.headline)
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, DesignSystem.Spacing.large)
-                                        .padding(.vertical, DesignSystem.Spacing.medium)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                                .fill(DesignSystem.Colors.primary)
-                                        )
-                                }
-                            }
-                        }
-                        .padding(.horizontal, DesignSystem.Spacing.large)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                    
-                    Spacer()
+                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
                 }
             }
         }
@@ -116,8 +51,281 @@ struct SessionsView: View {
                 showingWorkoutSelector = false
             }
         }
-        .onAppear {
-            // No longer needed as workouts are managed by SessionManager
+        .sheet(isPresented: $showingEmptyWorkout) {
+            EmptyWorkoutView {
+                showingEmptyWorkout = false
+            }
+        }
+    }
+    
+    // MARK: - Top Navigation Bar
+    private var topNavigationBar: some View {
+        HStack(spacing: 0) {
+            // + New Tab
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    selectedTab = .new
+                }
+            }) {
+                HStack {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .medium))
+                    Text("New")
+                        .font(.system(size: 16, weight: .medium))
+                }
+                .foregroundColor(selectedTab == .new ? .white : Color(.systemGray))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(selectedTab == .new ? Color(.systemGray3) : Color.clear)
+                )
+            }
+            
+            // History Tab
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    selectedTab = .history
+                }
+            }) {
+                Text("History")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(selectedTab == .history ? .white : Color(.systemGray))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(selectedTab == .history ? Color(.systemGray3) : Color.clear)
+                    )
+            }
+            
+            Spacer()
+            
+            // Search Icon
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    selectedTab = .search
+                }
+            }) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(selectedTab == .search ? .white : Color(.systemGray))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(selectedTab == .search ? Color(.systemGray3) : Color.clear)
+                    )
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 25)
+                .fill(Color(.systemGray6))
+        )
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+    }
+    
+    // MARK: - New Session View
+    private var newSessionView: some View {
+        ScrollView {
+            VStack(spacing: DesignSystem.Spacing.large) {
+                // Active Session Panel (if any)
+                if let session = sessionManager.activeSession {
+                    ActiveSessionPanel(session: session) {
+                        sessionManager.completeSession(session)
+                    } onCancel: {
+                        sessionManager.cancelSession(session)
+                    }
+                    .padding(.horizontal, DesignSystem.Spacing.large)
+                } else {
+                    // New Session Options
+                    VStack(spacing: DesignSystem.Spacing.large) {
+                        // Start with Empty Workout
+                        Button(action: {
+                            showingEmptyWorkout = true
+                        }) {
+                            VStack(spacing: DesignSystem.Spacing.medium) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(DesignSystem.Colors.primary)
+                                
+                                Text("Start with Empty Workout")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                                
+                                Text("Begin a session without a predefined workout")
+                                    .font(.body)
+                                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(DesignSystem.Spacing.extraLarge)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                    .fill(DesignSystem.Colors.cardBackground(for: colorScheme))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                            .stroke(DesignSystem.Colors.primary.opacity(0.3), lineWidth: 2)
+                                    )
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // Pick Existing Workout
+                        Button(action: {
+                            showingWorkoutSelector = true
+                        }) {
+                            VStack(spacing: DesignSystem.Spacing.medium) {
+                                Image(systemName: "list.bullet.circle.fill")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(DesignSystem.Colors.primary)
+                                
+                                Text("Pick an Existing Workout")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                                
+                                Text("Choose from your saved workout templates")
+                                    .font(.body)
+                                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(DesignSystem.Spacing.extraLarge)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                    .fill(DesignSystem.Colors.cardBackground(for: colorScheme))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                            .stroke(DesignSystem.Colors.primary.opacity(0.3), lineWidth: 2)
+                                    )
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.horizontal, DesignSystem.Spacing.large)
+                    .padding(.top, DesignSystem.Spacing.large)
+                }
+                
+                Spacer(minLength: 100)
+            }
+        }
+    }
+    
+    // MARK: - History View
+    private var historyView: some View {
+        ScrollView {
+            VStack(spacing: DesignSystem.Spacing.large) {
+                if sessionManager.pastSessions.isEmpty {
+                    // Empty History State
+                    VStack(spacing: DesignSystem.Spacing.large) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 60))
+                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                        
+                        Text("No Workout History")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                        
+                        Text("Your completed workouts will appear here")
+                            .font(.body)
+                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, DesignSystem.Spacing.large)
+                    .padding(.top, DesignSystem.Spacing.extraLarge)
+                } else {
+                    // Past Sessions List
+                    LazyVStack(spacing: DesignSystem.Spacing.medium) {
+                        ForEach(sessionManager.pastSessions) { session in
+                            CompactSessionCard(session: session)
+                                .padding(.horizontal, DesignSystem.Spacing.large)
+                        }
+                    }
+                    .padding(.top, DesignSystem.Spacing.large)
+                }
+                
+                Spacer(minLength: 100)
+            }
+        }
+    }
+    
+    // MARK: - Search View
+    private var searchView: some View {
+        VStack(spacing: DesignSystem.Spacing.large) {
+            // Search functionality placeholder
+            VStack(spacing: DesignSystem.Spacing.large) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 60))
+                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                
+                Text("Search Workouts")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                
+                Text("Search functionality coming soon")
+                    .font(.body)
+                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, DesignSystem.Spacing.large)
+            .padding(.top, DesignSystem.Spacing.extraLarge)
+            
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Empty Workout View
+struct EmptyWorkoutView: View {
+    let onDismiss: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: DesignSystem.Spacing.large) {
+                Text("Empty Workout Session")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                
+                Text("Start a free-form workout session where you can add exercises as you go")
+                    .font(.body)
+                    .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, DesignSystem.Spacing.large)
+                
+                Spacer()
+                
+                Button("Start Empty Session") {
+                    // TODO: Implement empty session start
+                    onDismiss()
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .padding(.horizontal, DesignSystem.Spacing.large)
+                .padding(.vertical, DesignSystem.Spacing.medium)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                        .fill(DesignSystem.Colors.primary)
+                )
+                .padding(.bottom, DesignSystem.Spacing.large)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        onDismiss()
+                    }
+                    .foregroundColor(DesignSystem.Colors.primary)
+                }
+            }
         }
     }
 }
