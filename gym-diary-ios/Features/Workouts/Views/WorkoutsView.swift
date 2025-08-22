@@ -14,7 +14,13 @@ struct WorkoutsView: View {
     @State private var sections: [WorkoutSection] = []
     @State private var showingCreateSection = false
     @State private var newSectionName = ""
+    @State private var showingCreateWorkout = false
+    @State private var newWorkoutName = ""
+    @State private var selectedSectionId = ""
+    @State private var preselectedSectionId: String? = nil
     @State private var dragState: DragState = .none
+    @State private var showingWorkoutDetails = false
+    @State private var workoutToShowDetails: Workout? = nil
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
@@ -32,15 +38,6 @@ struct WorkoutsView: View {
                             .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
                         
                         Spacer()
-                        
-                        Button(action: {
-                            newSectionName = ""
-                            showingCreateSection = true
-                        }) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.title)
-                                .foregroundColor(DesignSystem.Colors.primary)
-                        }
                     }
                     .padding(.horizontal, DesignSystem.Spacing.large)
                     .padding(.top, DesignSystem.Spacing.large)
@@ -48,21 +45,39 @@ struct WorkoutsView: View {
                     // Sections
                     ScrollView {
                         LazyVStack(spacing: DesignSystem.Spacing.large) {
-                            ForEach(sections.indices, id: \.self) { sectionIndex in
-                                WorkoutSectionView(
-                                    section: $sections[sectionIndex],
-                                    sectionIndex: sectionIndex,
-                                    onWorkoutMoved: { fromSection, fromIndex, toSection, toIndex in
-                                        moveWorkout(from: fromSection, from: fromIndex, to: toSection, to: toIndex)
-                                    },
-                                    onWorkoutDeleted: { workoutId in
-                                        deleteWorkout(workoutId: workoutId)
-                                    },
-                                    onSectionDeleted: { sectionId in
-                                        deleteSection(sectionId: sectionId)
-                                    },
-                                    dragState: $dragState
+                            // Show Default section only when no sections exist (My Workouts will always exist)
+                            if sections.isEmpty {
+                                DefaultWorkoutSectionView(
+                                    onAddWorkout: {
+                                        // Open workout creation dialog
+                                        showingCreateWorkout = true
+                                    }
                                 )
+                            }
+                            
+                            ForEach(sections.indices, id: \.self) { sectionIndex in
+                                                            WorkoutSectionView(
+                                section: $sections[sectionIndex],
+                                sectionIndex: sectionIndex,
+                                sections: sections,
+                                onWorkoutMoved: { fromSection, fromIndex, toSection, toIndex in
+                                    moveWorkout(from: fromSection, from: fromIndex, to: toSection, to: toIndex)
+                                },
+                                onWorkoutDeleted: { workoutId in
+                                    deleteWorkout(workoutId: workoutId)
+                                },
+                                onSectionDeleted: { sectionId in
+                                    deleteSection(sectionId: sectionId)
+                                },
+                                onAddWorkout: { sectionId in
+                                    preselectedSectionId = sectionId
+                                    showingCreateWorkout = true
+                                },
+                                onSectionMoved: { from, to in
+                                    moveSection(from: from, to: to)
+                                },
+                                dragState: $dragState
+                            )
                                 .opacity(dragState == .dragging ? 0.6 : 1.0)
                                 .animation(.easeInOut(duration: 0.2), value: dragState)
                                 .onDrag {
@@ -79,6 +94,28 @@ struct WorkoutsView: View {
                                     },
                                     dragState: $dragState
                                 ))
+                            }
+                            
+                            // Add Section Button
+                            if !sections.isEmpty {
+                                Button(action: {
+                                    showingCreateSection = true
+                                }) {
+                                    HStack {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.title2)
+                                            .foregroundColor(DesignSystem.Colors.primary)
+                                        
+                                        Text("Add New Section")
+                                            .font(.headline)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(DesignSystem.Colors.primary)
+                                        
+                                    }
+
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .padding(.top, DesignSystem.Spacing.medium)
                             }
                         }
                         .padding(.horizontal, DesignSystem.Spacing.large)
@@ -97,10 +134,82 @@ struct WorkoutsView: View {
         } message: {
             Text("Enter the name for your new section.")
         }
+        .sheet(isPresented: $showingCreateWorkout) {
+            CreateWorkoutView(
+                sections: sections,
+                newWorkoutName: $newWorkoutName,
+                selectedSectionId: $selectedSectionId,
+                onCancel: {
+                    showingCreateWorkout = false
+                },
+                onCreate: {
+                    createWorkoutInSelectedSection()
+                    showingCreateWorkout = false
+                },
+                isEditing: false
+            )
+            .presentationDetents([.height(200)])
+        }
+        .fullScreenCover(isPresented: $showingWorkoutDetails) {
+            if let workout = workoutToShowDetails {
+                WorkoutDetailView(workout: Binding(
+                    get: { workout },
+                    set: { newWorkout in
+                        // Update the workout in the sections
+                        for sectionIndex in sections.indices {
+                            if let workoutIndex = sections[sectionIndex].workouts.firstIndex(where: { $0.id == workout.id }) {
+                                sections[sectionIndex].workouts[workoutIndex] = newWorkout
+                                break
+                            }
+                        }
+                        workoutToShowDetails = newWorkout
+                    }
+                ), sections: sections, onDelete: {
+                    // Delete the workout
+                    deleteWorkout(workoutId: workout.id)
+                    showingWorkoutDetails = false
+                    workoutToShowDetails = nil
+                }, onDismiss: {
+                    showingWorkoutDetails = false
+                    workoutToShowDetails = nil
+                })
+            }
+        }
         .onAppear { syncWorkouts() }
+        .onChange(of: showingCreateWorkout) { _, isShowing in
+            if !isShowing {
+                newWorkoutName = ""
+                selectedSectionId = ""
+                preselectedSectionId = nil
+            } else {
+                // If a specific section was preselected (from section + button), use that
+                if let preselectedId = preselectedSectionId {
+                    selectedSectionId = preselectedId
+                } else {
+                    // Otherwise, use the standard logic: prefer "My Workouts", then single section, then first
+                    if let myWorkoutsSection = sections.first(where: { $0.name == "My Workouts" }) {
+                        selectedSectionId = myWorkoutsSection.id
+                    } else if sections.count == 1 {
+                        selectedSectionId = sections[0].id
+                    } else if !sections.isEmpty {
+                        selectedSectionId = sections[0].id
+                    }
+                }
+            }
+        }
     }
     
     private func syncWorkouts() {
+        // Ensure "My Workouts" section always exists
+        if !sections.contains(where: { $0.name == "My Workouts" }) {
+            let defaultSection = WorkoutSection(
+                userId: "user123",
+                name: "My Workouts",
+                workouts: []
+            )
+            sections.insert(defaultSection, at: 0) // Insert at the beginning
+        }
+        
         SessionManager.shared.workouts = sections.flatMap { $0.workouts }
     }
     
@@ -130,6 +239,13 @@ struct WorkoutsView: View {
         // Insert at the specified position in the target section
         let insertIndex = min(toWorkoutIndex, sections[toSectionIndex].workouts.count)
         sections[toSectionIndex].workouts.insert(workout, at: insertIndex)
+        
+        // Check if the source section is now empty and should be closed
+        if sections[fromSectionIndex].workouts.isEmpty && sections[fromSectionIndex].name != "My Workouts" {
+            // Close the empty section (except "My Workouts" which should never be closed)
+            sections.remove(at: fromSectionIndex)
+        }
+        
         syncWorkouts()
         
         // Reset drag state after move
@@ -142,6 +258,13 @@ struct WorkoutsView: View {
         for sectionIndex in sections.indices {
             if let workoutIndex = sections[sectionIndex].workouts.firstIndex(where: { $0.id == workoutId }) {
                 sections[sectionIndex].workouts.remove(at: workoutIndex)
+                
+                // Check if the section is now empty and should be closed
+                if sections[sectionIndex].workouts.isEmpty && sections[sectionIndex].name != "My Workouts" {
+                    // Close the empty section (except "My Workouts" which should never be closed)
+                    sections.remove(at: sectionIndex)
+                }
+                
                 syncWorkouts()
                 return
             }
@@ -152,20 +275,101 @@ struct WorkoutsView: View {
         sections.removeAll { $0.id == sectionId }
         syncWorkouts()
     }
+    
+    private func createDefaultSection() {
+        let newSection = WorkoutSection(
+            userId: "user123",
+            name: "My Workouts",
+            workouts: []
+        )
+        sections.append(newSection)
+        syncWorkouts()
+    }
+    
+    private func createWorkoutInDefaultSection() {
+        guard !newWorkoutName.isEmpty else { return }
+        
+        // Find the default "My Workouts" section (it should always exist)
+        guard let defaultSection = sections.first(where: { $0.name == "My Workouts" }) else { 
+            return 
+        }
+        
+        // Create the new workout
+        let newWorkout = Workout(
+            userId: "user123",
+            name: newWorkoutName,
+            sectionId: defaultSection.id,
+            iconName: "dumbbell",
+            colorName: "Blue",
+            chipText: ""
+        )
+        
+        // Add workout to the section
+        if let sectionIndex = sections.firstIndex(where: { $0.id == defaultSection.id }) {
+            sections[sectionIndex].workouts.append(newWorkout)
+        }
+        
+        newWorkoutName = ""
+        syncWorkouts()
+    }
+    
+    private func createWorkoutInSelectedSection() {
+        guard !newWorkoutName.isEmpty, !selectedSectionId.isEmpty else { 
+            return 
+        }
+        
+        // Find the selected section
+        guard let sectionIndex = sections.firstIndex(where: { $0.id == selectedSectionId }) else { 
+            return 
+        }
+        
+        // Create the new workout
+        let newWorkout = Workout(
+            userId: "user123",
+            name: newWorkoutName,
+            sectionId: selectedSectionId,
+            iconName: "dumbbell",
+            colorName: "Blue",
+            chipText: ""
+        )
+        
+        // Add workout to the selected section
+        sections[sectionIndex].workouts.append(newWorkout)
+        
+        newWorkoutName = ""
+        selectedSectionId = ""
+        syncWorkouts()
+        
+        // Open the workout details automatically
+        openWorkoutDetails(for: newWorkout)
+    }
+    
+    private func openWorkoutDetails(for workout: Workout) {
+        // Find the workout in the sections and open its details
+        for sectionIndex in sections.indices {
+            if let workoutIndex = sections[sectionIndex].workouts.firstIndex(where: { $0.id == workout.id }) {
+                // Set the workout as the one to show details for
+                workoutToShowDetails = workout
+                showingWorkoutDetails = true
+                return
+            }
+        }
+    }
 }
 
 // MARK: - Workout Section View
 struct WorkoutSectionView: View {
     @Binding var section: WorkoutSection
     let sectionIndex: Int
+    let sections: [WorkoutSection]
     let onWorkoutMoved: (Int, Int, Int, Int) -> Void
     let onWorkoutDeleted: (String) -> Void
     let onSectionDeleted: (String) -> Void
+    let onAddWorkout: (String) -> Void
+    let onSectionMoved: (Int, Int) -> Void
     @Binding var dragState: DragState
     @Environment(\.colorScheme) private var colorScheme
-    @State private var showingCreateWorkout = false
     @State private var showingDeleteAlert = false
-    @State private var newWorkoutName = ""
     
     var body: some View {
         VStack(spacing: 0) {
@@ -200,20 +404,22 @@ struct WorkoutSectionView: View {
                     
                     // Add workout button
                     Button(action: {
-                        showingCreateWorkout = true
+                        onAddWorkout(section.id)
                     }) {
                         Image(systemName: "plus")
                             .font(.title3)
                             .foregroundColor(DesignSystem.Colors.primary)
                     }
                     
-                    // Delete section button
-                    Button(action: {
-                        showingDeleteAlert = true
-                    }) {
-                        Image(systemName: "minus")
-                            .font(.title3)
-                            .foregroundColor(.red)
+                    // Delete section button (hidden for "My Workouts")
+                    if section.name != "My Workouts" {
+                        Button(action: {
+                            showingDeleteAlert = true
+                        }) {
+                            Image(systemName: "minus")
+                                .font(.title3)
+                                .foregroundColor(.red)
+                        }
                     }
                 }
                 .padding(.horizontal, DesignSystem.Spacing.large)
@@ -266,6 +472,7 @@ struct WorkoutSectionView: View {
                                     
                                     WorkoutCard(
                                         workout: $section.workouts[workoutIndex],
+                                        sections: sections,
                                         onDelete: {
                                             onWorkoutDeleted(section.workouts[workoutIndex].id)
                                         },
@@ -336,25 +543,13 @@ struct WorkoutSectionView: View {
         .animation(.easeInOut(duration: 0.2), value: section.isExpanded)
         .onDrop(of: [.plainText], delegate: SectionDropDelegate(
             toSectionIndex: sectionIndex,
-            onSectionMoved: { from, to in
-                // This is for section reordering, not workout reordering
-                // Handled in WorkoutsView
-            },
+            onSectionMoved: onSectionMoved,
             onWorkoutMovedToSection: { fromSection, fromIndex, toSection, toIndex in
                 onWorkoutMoved(fromSection, fromIndex, toSection, toIndex)
             },
             dragState: $dragState
         ))
-        .alert("Create New Workout", isPresented: $showingCreateWorkout) {
-            TextField("Workout Name", text: $newWorkoutName)
-            Button("Cancel", role: .cancel) {}
-            Button("Create") {
-                createWorkout()
-            }
-            .disabled(newWorkoutName.isEmpty)
-        } message: {
-            Text("Enter the name for your new workout.")
-        }
+
         .alert("Delete Section", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
@@ -363,27 +558,10 @@ struct WorkoutSectionView: View {
         } message: {
             Text("Are you sure you want to delete '\(section.name)'? This will also delete all workouts in this section.")
         }
-        .onChange(of: showingCreateWorkout) { _, isShowing in
-            if !isShowing {
-                newWorkoutName = ""
-            }
-        }
+
     }
     
-    private func createWorkout() {
-        guard !newWorkoutName.isEmpty else { return }
-        
-        let newWorkout = Workout(
-            userId: "user123",
-            name: newWorkoutName,
-            sectionId: section.id,
-            iconName: "dumbbell",
-            colorName: "Blue",
-            chipText: ""
-        )
-        section.workouts.append(newWorkout)
-        newWorkoutName = ""
-    }
+
 }
 
 // MARK: - Empty Workout Section View
@@ -407,6 +585,73 @@ struct EmptyWorkoutSectionView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(DesignSystem.Spacing.large)
+    }
+}
+
+// MARK: - Default Workout Section View
+struct DefaultWorkoutSectionView: View {
+    let onAddWorkout: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Top border line
+            Rectangle()
+                .fill(Color(.systemGray4))
+                .frame(height: 1)
+            
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.medium) {
+                // Section Header
+                HStack {
+                    Text("My Workouts")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, DesignSystem.Spacing.large)
+                .padding(.vertical, DesignSystem.Spacing.medium)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.clear)
+                )
+                
+                // Empty state with prominent + button
+                VStack(spacing: DesignSystem.Spacing.large) {
+                    Button(action: onAddWorkout) {
+                        VStack(spacing: DesignSystem.Spacing.medium) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(DesignSystem.Colors.primary)
+                            
+                            Text("Create Your First Workout")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                            
+                            Text("Start building your fitness routine")
+                                .font(.subheadline)
+                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(DesignSystem.Spacing.extraLarge)
+                        .background(
+                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                .fill(DesignSystem.Colors.cardBackground(for: colorScheme))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                        .stroke(DesignSystem.Colors.primary.opacity(0.3), lineWidth: 2)
+                                )
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                .padding(.horizontal, DesignSystem.Spacing.large)
+                .padding(.bottom, DesignSystem.Spacing.large)
+            }
+        }
     }
 }
 
@@ -519,6 +764,7 @@ struct SectionDropDelegate: DropDelegate {
 // MARK: - Workout Card
 struct WorkoutCard: View {
     @Binding var workout: Workout
+    let sections: [WorkoutSection]
     var onDelete: (() -> Void)? = nil
     var isDragging: Bool = false
     @State private var showingWorkoutDetails = false
@@ -610,10 +856,22 @@ struct WorkoutCard: View {
             .opacity(isDragging ? 0.6 : 1.0)
             .scaleEffect(isDragging ? 0.95 : 1.0)
             .animation(.easeInOut(duration: 0.2), value: isDragging)
+            .onChange(of: showingWorkoutDetails) { _, isShowing in
+                // Reset any potential animation state when the detail view is closed
+                if !isShowing {
+                    // Force a small delay to ensure the animation state is properly reset
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        // This will trigger a view update and reset any stuck animation states
+                    }
+                }
+            }
         }
         .buttonStyle(PlainButtonStyle())
         .fullScreenCover(isPresented: $showingWorkoutDetails) {
-            WorkoutDetailView(workout: $workout, onDelete: onDelete, onDismiss: {
+            WorkoutDetailView(workout: $workout, sections: sections, onDelete: {
+                onDelete?()
+                showingWorkoutDetails = false
+            }, onDismiss: {
                 showingWorkoutDetails = false
             })
         }
@@ -623,6 +881,7 @@ struct WorkoutCard: View {
 // MARK: - Workout Detail View
 struct WorkoutDetailView: View {
     @Binding var workout: Workout
+    let sections: [WorkoutSection]
     var onDelete: (() -> Void)? = nil
     var onDismiss: (() -> Void)? = nil
     @Environment(\.colorScheme) private var colorScheme
@@ -632,6 +891,8 @@ struct WorkoutDetailView: View {
     @State private var showingEditExercise = false
     @State private var editingExerciseIndex: Int? = nil
     @State private var confirmDelete = false
+    @State private var editWorkoutName = ""
+    @State private var editSelectedSectionId = ""
     
     private var workoutIcon: WorkoutIcon {
         WorkoutIcon.allIcons.first { $0.systemName == workout.iconName } ?? 
@@ -675,6 +936,8 @@ struct WorkoutDetailView: View {
                         Spacer()
                         
                         Button("Edit") {
+                            editWorkoutName = workout.name
+                            editSelectedSectionId = workout.sectionId
                             showingEditWorkout = true
                         }
                         .foregroundColor(DesignSystem.Colors.primary)
@@ -684,7 +947,7 @@ struct WorkoutDetailView: View {
                         }
                         .foregroundColor(.red)
                         .padding(.horizontal, 8)
-                        .alert("sicuro di voler cancellare il workout?", isPresented: $confirmDelete) {
+                        .alert("Are you sure you want to delete this workout?", isPresented: $confirmDelete) {
                             Button("Cancel", role: .cancel) {}
                             Button("Delete", role: .destructive) {
                                 onDelete?()
@@ -759,8 +1022,9 @@ struct WorkoutDetailView: View {
             }
             .toolbar(.hidden, for: .tabBar)
         }
-        .sheet(isPresented: $showingAddExercise) {
+        .fullScreenCover(isPresented: $showingAddExercise) {
             AddExerciseView(
+                workoutId: workout.id,
                 onAdd: { newExercise in
                     workout.exercises.append(newExercise)
                 },
@@ -768,13 +1032,25 @@ struct WorkoutDetailView: View {
                     // Add circuit and its exercises
                     workout.circuits.append(circuit)
                     workout.exercises.append(contentsOf: exercises)
-                }
+                },
+                isReplacing: false
             )
-            .presentationDetents([.large])
         }
         .sheet(isPresented: $showingEditWorkout) {
-            EditWorkoutView(workout: $workout)
-                .presentationDetents([.large])
+            CreateWorkoutView(
+                sections: sections,
+                newWorkoutName: $editWorkoutName,
+                selectedSectionId: $editSelectedSectionId,
+                onCancel: {
+                    showingEditWorkout = false
+                },
+                onCreate: {
+                    saveEditedWorkout()
+                    showingEditWorkout = false
+                },
+                isEditing: true
+            )
+            .presentationDetents([.height(200)])
         }
         .onChange(of: sessionManager.shouldNavigateToSessions) { _, shouldNavigate in
             if shouldNavigate {
@@ -787,6 +1063,11 @@ struct WorkoutDetailView: View {
     private func startWorkoutSession() {
         SessionManager.shared.startSession(from: workout)
     }
+    
+    private func saveEditedWorkout() {
+        workout.name = editWorkoutName
+        workout.sectionId = editSelectedSectionId
+    }
 }
 // SetEditorRow moved to Features/Workouts/Views/SetEditorRow.swift
 
@@ -795,72 +1076,7 @@ extension WorkoutDetailView {
     // move state inside main struct - allowed as computed via backing storage
 }
 
-// MARK: - Edit Workout View
-struct EditWorkoutView: View {
-    @Binding var workout: Workout
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var tempName: String = ""
-    @State private var tempChip: String = ""
 
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                DesignSystem.Colors.background(for: colorScheme).ignoresSafeArea()
-                ScrollView {
-                    VStack(spacing: DesignSystem.Spacing.large) {
-                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                            Text("Workout Name")
-                                .font(.headline)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                            TextField("Enter workout name", text: $tempName)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .background(
-                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                        .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                )
-                        }
-                        
-
-                        
-                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                            Text("Chip Text")
-                                .font(.headline)
-                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                            TextField("e.g., Push, Pull, Legs...", text: $tempChip)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .background(
-                                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                        .fill(DesignSystem.Colors.surfaceBackground(for: colorScheme))
-                                )
-                        }
-                    }
-                    .padding(DesignSystem.Spacing.large)
-                }
-            }
-            .navigationTitle("Edit Workout")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .navigationBarTrailing) { Button("Save") { save() }.disabled(tempName.isEmpty) }
-            }
-        }
-        .onAppear { load() }
-    }
-    
-    private func load() {
-        tempName = workout.name
-        tempChip = workout.chipText
-    }
-    
-    private func save() {
-        workout.name = tempName
-        workout.chipText = tempChip
-        workout.iconName = "dumbbell"
-        workout.colorName = "Blue"
-        dismiss()
-    }
-}
 
 // MARK: - Exercise Detail Row
 struct ExerciseDetailRow: View {

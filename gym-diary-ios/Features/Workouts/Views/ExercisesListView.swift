@@ -31,6 +31,8 @@ struct ExercisesListView: View {
     @State private var showingAddExercise = false
     @State private var editingExerciseIndex: Int? = nil
     @State private var collapsedExerciseIds: Set<String> = []
+    @State private var showingReplaceExercise = false
+    @State private var replacingExerciseIndex: Int? = nil
     
     enum ExerciseDragState: Equatable { case none, dragging, overIndex(Int) }
     @State private var exerciseDragState: ExerciseDragState = .none
@@ -39,7 +41,8 @@ struct ExercisesListView: View {
         VStack(spacing: 0) {
             exercisesList
         }
-        .sheet(isPresented: $showingAddExercise) { addExerciseSheet }
+        .fullScreenCover(isPresented: $showingAddExercise) { addExerciseSheet }
+        .fullScreenCover(isPresented: $showingReplaceExercise) { replaceExerciseSheet }
         .sheet(isPresented: Binding<Bool>(
             get: { editingExerciseIndex != nil },
             set: { if !$0 { editingExerciseIndex = nil } }
@@ -47,33 +50,74 @@ struct ExercisesListView: View {
     }
 
     private var addExerciseSheet: some View {
-        AddExerciseView(onAdd: { newExercise in
-            // Single exercise path
-            workout.exercises.append(newExercise)
-            showingAddExercise = false
-        }, onAddCircuit: { circuit, exercises in
-            // Circuit path: append circuit and its exercises
-            var circuitWithOrder = circuit
-            circuitWithOrder.order = (workout.circuits.map { $0.order }.max() ?? workout.exercises.filter { !$0.isCircuit }.map { $0.order }.max() ?? -1) + 1
-            workout.circuits.append(circuitWithOrder)
-            
-            // Add the circuit exercises to the workout with proper order
-            let baseOrder = circuitWithOrder.order
-            var orderCounter = baseOrder + 1
-            let taggedExercises = exercises.map { ex -> Exercise in
-                var e = ex
-                e.circuitId = circuitWithOrder.id
-                e.isCircuit = true
-                e.order = orderCounter
-                orderCounter += 1
-                return e
-            }
-            workout.exercises.append(contentsOf: taggedExercises)
-            showingAddExercise = false
-        })
+        AddExerciseView(
+            workoutId: workout.id,
+            onAdd: { newExercise in
+                // Single exercise path
+                workout.exercises.append(newExercise)
+                showingAddExercise = false
+            }, 
+            onAddCircuit: { circuit, exercises in
+                // Circuit path: append circuit and its exercises
+                var circuitWithOrder = circuit
+                circuitWithOrder.order = (workout.circuits.map { $0.order }.max() ?? workout.exercises.filter { !$0.isCircuit }.map { $0.order }.max() ?? -1) + 1
+                workout.circuits.append(circuitWithOrder)
+                
+                // Add the circuit exercises to the workout with proper order
+                let baseOrder = circuitWithOrder.order
+                var orderCounter = baseOrder + 1
+                let taggedExercises = exercises.map { ex -> Exercise in
+                    var e = ex
+                    e.circuitId = circuitWithOrder.id
+                    e.isCircuit = true
+                    e.order = orderCounter
+                    orderCounter += 1
+                    return e
+                }
+                workout.exercises.append(contentsOf: taggedExercises)
+                showingAddExercise = false
+            },
+            isReplacing: false
+        )
     }
     
-
+    private var replaceExerciseSheet: some View {
+        AddExerciseView(
+            workoutId: workout.id,
+            onAdd: { newExercise in
+                // Replace the exercise at the specified index
+                if let idx = replacingExerciseIndex, idx < workout.exercises.count {
+                    let oldExercise = workout.exercises[idx]
+                    var replacementExercise = newExercise
+                    // Preserve the order and other properties
+                    replacementExercise.order = oldExercise.order
+                    replacementExercise.isCircuit = oldExercise.isCircuit
+                    replacementExercise.circuitId = oldExercise.circuitId
+                    
+                    workout.exercises[idx] = replacementExercise
+                }
+                showingReplaceExercise = false
+                replacingExerciseIndex = nil
+            }, 
+            onAddCircuit: { circuit, exercises in
+                // For circuit replacement, we replace with just the first exercise
+                // (circuits can't replace individual exercises directly)
+                if let idx = replacingExerciseIndex, idx < workout.exercises.count, let firstExercise = exercises.first {
+                    let oldExercise = workout.exercises[idx]
+                    var replacementExercise = firstExercise
+                    // Preserve the order and other properties
+                    replacementExercise.order = oldExercise.order
+                    replacementExercise.isCircuit = oldExercise.isCircuit
+                    replacementExercise.circuitId = oldExercise.circuitId
+                    
+                    workout.exercises[idx] = replacementExercise
+                }
+                showingReplaceExercise = false
+                replacingExerciseIndex = nil
+            },
+            isReplacing: true
+        )
+    }
 
     private var exercisesList: some View {
         VStack(spacing: 0) {
@@ -251,20 +295,20 @@ struct ExercisesListView: View {
                 }
                 .buttonStyle(.plain)
 
-                // Edit button (moved to left)
-                Button {
-                    editingExerciseIndex = eIdx
-                } label: {
-                    Image(systemName: "pencil")
-                        .foregroundColor(.blue)
-                }
-                .buttonStyle(PlainButtonStyle())
-
                 Text(ex.variants.isEmpty ? ex.name : "\(ex.name) (\(ex.variants.map { $0.displayName }.joined(separator: ", ")))")
                     .font(.headline)
                     .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
 
                 Spacer()
+
+                // Replace button (new)
+                Button {
+                    replaceExercise(at: eIdx)
+                } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .foregroundColor(DesignSystem.Colors.primary)
+                }
+                .buttonStyle(PlainButtonStyle())
 
                 Button {
                     workout.exercises.remove(at: eIdx)
@@ -294,19 +338,20 @@ struct ExercisesListView: View {
                     .background(Color(.systemGray6))
                 }
                 
-                ForEach(Array(workout.exercises[eIdx].sets.enumerated()), id: \.offset) { sTuple in
-                    let sIdx = sTuple.offset
-                    VStack(spacing: 0) {
-                        SetEditorRow(set: $workout.exercises[eIdx].sets[sIdx])
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    workout.exercises[eIdx].sets.remove(at: sIdx)
-                                } label: { Label("Delete", systemImage: "trash") }
+                ForEach(workout.exercises[eIdx].sets, id: \.id) { set in
+                    if let sIdx = workout.exercises[eIdx].sets.firstIndex(where: { $0.id == set.id }) {
+                        VStack(spacing: 0) {
+                            SetEditorRow(set: $workout.exercises[eIdx].sets[sIdx])
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        workout.exercises[eIdx].sets.remove(at: sIdx)
+                                    } label: { Label("Delete", systemImage: "trash") }
+                                }
+                            
+                            if sIdx < workout.exercises[eIdx].sets.count - 1 {
+                                Divider()
+                                    .padding(.horizontal, DesignSystem.Spacing.large)
                             }
-                        
-                        if sIdx < workout.exercises[eIdx].sets.count - 1 {
-                            Divider()
-                                .padding(.horizontal, DesignSystem.Spacing.large)
                         }
                     }
                 }
@@ -372,12 +417,19 @@ struct ExercisesListView: View {
         }
     }
 
-    // Edit sheet
+    // Edit sheet - TODO: Implement EditExerciseView for the new exercise catalog system
     @ViewBuilder
     private var editExerciseSheet: some View {
         if let idx = editingExerciseIndex, idx < workout.exercises.count {
-            AddExerciseView(exercise: $workout.exercises[idx])
+            // TODO: Create EditExerciseView that works with the new exercise catalog
+            Text("Edit Exercise - Coming Soon")
+                .padding()
         }
+    }
+    
+    private func replaceExercise(at index: Int) {
+        replacingExerciseIndex = index
+        showingReplaceExercise = true
     }
 }
 

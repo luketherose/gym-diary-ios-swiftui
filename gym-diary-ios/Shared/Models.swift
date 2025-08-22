@@ -154,7 +154,7 @@ struct Workout: Identifiable, Codable {
     let createdAt: Date
     let updatedAt: Date
     let lastExecuted: Date?
-    let sectionId: String
+    var sectionId: String
     var iconName: String
     var colorName: String
     var chipText: String

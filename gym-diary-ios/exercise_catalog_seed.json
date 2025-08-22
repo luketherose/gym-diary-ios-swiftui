@@ -1,0 +1,112 @@
+{
+  "attributes": [
+    { "key": "equipment", "type": "enum", "values": ["barbell","dumbbells","machine","cable","smith_machine","kettlebell","bodyweight","band"] },
+    { "key": "bench_angle", "type": "enum", "values": ["flat","incline","decline"] },
+    { "key": "grip_type", "type": "enum", "values": ["pronated","supinated","neutral","mixed"] },
+    { "key": "grip_width", "type": "enum", "values": ["narrow","standard","wide"] },
+    { "key": "stance", "type": "enum", "values": ["standard","sumo","split","front_rack"] },
+    { "key": "unilateral", "type": "boolean" },
+    { "key": "body_angle", "type": "enum", "values": ["seated","standing","bent_over","chest_supported"] },
+    { "key": "bar_position", "type": "enum", "values": ["high_bar","low_bar","front"] },
+    { "key": "range_of_motion", "type": "enum", "values": ["full","partial"] },
+    { "key": "tempo", "type": "enum", "values": ["2-0-2","3-1-3","explosive","slow_controlled"] },
+    { "key": "cable_attachment", "type": "enum", "values": ["straight_bar","ez_bar","rope","single_handle","v_bar","lat_bar"] },
+    { "key": "handle_position", "type": "enum", "values": ["overhead","chest_height","low","hip"] },
+    { "key": "hand_orientation", "type": "enum", "values": ["pronated","supinated","neutral"] }
+  ],
+
+  "archetypes": [
+    { "key": "bench_press", "primary_muscle": "chest", "secondary_muscles": ["triceps","front_delts"], "allowed_attributes": ["equipment","bench_angle","grip_type","grip_width","tempo","range_of_motion","unilateral"] },
+    { "key": "overhead_press", "primary_muscle": "shoulders", "secondary_muscles": ["triceps","upper_chest"], "allowed_attributes": ["equipment","body_angle","grip_type","grip_width","tempo","unilateral","range_of_motion"] },
+    { "key": "push_up", "primary_muscle": "chest", "secondary_muscles": ["triceps","front_delts","core"], "allowed_attributes": ["grip_width","range_of_motion","tempo","body_angle","unilateral"] },
+    { "key": "chest_fly", "primary_muscle": "chest", "secondary_muscles": ["front_delts"], "allowed_attributes": ["equipment","bench_angle","range_of_motion","tempo","unilateral","body_angle","cable_attachment"] },
+    { "key": "squat", "primary_muscle": "quads", "secondary_muscles": ["glutes","hamstrings","core"], "allowed_attributes": ["equipment","stance","bar_position","range_of_motion","tempo","body_angle"] },
+    { "key": "deadlift", "primary_muscle": "hamstrings", "secondary_muscles": ["glutes","back","core"], "allowed_attributes": ["equipment","stance","grip_type","grip_width","range_of_motion","tempo","body_angle"] },
+    { "key": "lunge", "primary_muscle": "quads", "secondary_muscles": ["glutes","hamstrings"], "allowed_attributes": ["equipment","stance","unilateral","body_angle","tempo"] },
+    { "key": "hip_thrust", "primary_muscle": "glutes", "secondary_muscles": ["hamstrings","core"], "allowed_attributes": ["equipment","range_of_motion","tempo","body_angle"] },
+    { "key": "leg_press", "primary_muscle": "quads", "secondary_muscles": ["glutes","hamstrings"], "allowed_attributes": ["equipment","stance","range_of_motion","tempo"] },
+    { "key": "pull_up", "primary_muscle": "lats", "secondary_muscles": ["biceps","rear_delts","core"], "allowed_attributes": ["grip_type","grip_width","range_of_motion","tempo","body_angle"] },
+    { "key": "lat_pulldown", "primary_muscle": "lats", "secondary_muscles": ["biceps","rear_delts"], "allowed_attributes": ["equipment","grip_type","grip_width","cable_attachment","range_of_motion","tempo","body_angle"] },
+    { "key": "row", "primary_muscle": "mid_back", "secondary_muscles": ["lats","rear_delts","biceps"], "allowed_attributes": ["equipment","body_angle","grip_type","grip_width","range_of_motion","tempo","unilateral","cable_attachment","handle_position"] },
+    { "key": "biceps_curl", "primary_muscle": "biceps", "secondary_muscles": ["forearms"], "allowed_attributes": ["equipment","body_angle","grip_type","grip_width","unilateral","range_of_motion","tempo","cable_attachment"] },
+    { "key": "triceps_extension", "primary_muscle": "triceps", "secondary_muscles": [], "allowed_attributes": ["equipment","body_angle","cable_attachment","hand_orientation","range_of_motion","tempo","unilateral"] },
+    { "key": "lateral_raise", "primary_muscle": "side_delts", "secondary_muscles": [], "allowed_attributes": ["equipment","body_angle","unilateral","range_of_motion","tempo"] },
+    { "key": "shrug", "primary_muscle": "traps", "secondary_muscles": ["forearms"], "allowed_attributes": ["equipment","body_angle","unilateral","range_of_motion","tempo","grip_type","grip_width"] },
+    { "key": "crunch", "primary_muscle": "abs", "secondary_muscles": [], "allowed_attributes": ["body_angle","tempo","range_of_motion"] },
+    { "key": "plank", "primary_muscle": "core", "secondary_muscles": [], "allowed_attributes": ["body_angle","tempo","range_of_motion","unilateral"] },
+    { "key": "back_extension", "primary_muscle": "lower_back", "secondary_muscles": ["glutes","hamstrings"], "allowed_attributes": ["body_angle","tempo","range_of_motion","unilateral"] }
+  ],
+
+  "rules": [
+    { "scope": "global", "target": "grip_width", "if": { "equipment": ["barbell","machine","cable","smith_machine"] }, "allow": { "grip_width": ["narrow","standard","wide"] }, "errorMessage": "Grip width available only for bar/machine/cable setups." },
+    { "scope": "global", "target": "grip_width", "if": { "equipment": ["dumbbells","kettlebell","bodyweight","band"] }, "deny": { "grip_width": ["narrow","standard","wide"] }, "errorMessage": "Grip width not applicable for the selected equipment." },
+
+    { "scope": "global", "target": "cable_attachment", "if": { "equipment": ["cable"] }, "allow": { "cable_attachment": ["straight_bar","ez_bar","rope","single_handle","v_bar","lat_bar"] }, "errorMessage": "Choose a valid cable attachment." },
+    { "scope": "global", "target": "cable_attachment", "if": { "equipment": ["barbell","dumbbells","machine","smith_machine","kettlebell","bodyweight","band"] }, "deny": { "cable_attachment": ["straight_bar","ez_bar","rope","single_handle","v_bar","lat_bar"] }, "errorMessage": "Cable attachments only apply to cable exercises." },
+
+    { "scope": "global", "target": "unilateral", "if": { "equipment": ["barbell","smith_machine","machine"] }, "deny": { "unilateral": ["true"] }, "errorMessage": "Unilateral variations are not supported with barbell/machine/smith." },
+    { "scope": "global", "target": "unilateral", "if": { "equipment": ["dumbbells","kettlebell","cable","band","bodyweight"] }, "allow": { "unilateral": ["true","false"] }, "errorMessage": "Unilateral is allowed for dumbbells, kettlebell, cable, band and bodyweight." },
+
+    { "scope": "archetype", "archetype": "bench_press", "require": ["equipment"], "errorMessage": "Bench press requires an equipment selection." },
+    { "scope": "archetype", "archetype": "bench_press", "target": "equipment", "allow": { "equipment": ["barbell","dumbbells","machine","smith_machine"] }, "errorMessage": "Bench press supports barbell, dumbbells, machine or smith machine." },
+    { "scope": "archetype", "archetype": "bench_press", "target": "bench_angle", "allow": { "bench_angle": ["flat","incline","decline"] }, "errorMessage": "Bench angle must be flat, incline or decline." },
+
+    /* -------- OVERHEAD PRESS -------- */
+    { "scope": "archetype", "archetype": "overhead_press", "target": "equipment", "allow": { "equipment": ["barbell","dumbbells","kettlebell","machine","smith_machine"] }, "errorMessage": "Overhead press supports barbell, dumbbells, kettlebell, machine or smith machine." },
+    { "scope": "archetype", "archetype": "overhead_press", "target": "body_angle", "allow": { "body_angle": ["standing","seated"] }, "errorMessage": "Overhead press can be performed standing or seated." },
+
+    /* -------- PUSH-UP -------- */
+    { "scope": "archetype", "archetype": "push_up", "target": "equipment", "deny": { "equipment": ["barbell","dumbbells","machine","cable","smith_machine","kettlebell","band"] }, "errorMessage": "Push-up is a bodyweight movement." },
+
+    /* -------- CHEST FLY -------- */
+    { "scope": "archetype", "archetype": "chest_fly", "target": "equipment", "allow": { "equipment": ["dumbbells","machine","cable"] }, "errorMessage": "Chest fly supports dumbbells, machine or cable." },
+    { "scope": "archetype", "archetype": "chest_fly", "if": { "equipment": ["dumbbells","machine","cable"] }, "target": "bench_angle", "allow": { "bench_angle": ["flat","incline","decline"] }, "errorMessage": "Select a valid bench angle for chest fly." },
+
+    /* -------- SQUAT -------- */
+    { "scope": "archetype", "archetype": "squat", "target": "equipment", "allow": { "equipment": ["barbell","dumbbells","machine","smith_machine","bodyweight","kettlebell"] }, "errorMessage": "Squat supports barbell, dumbbells, kettlebell, bodyweight, machine or smith machine." },
+    { "scope": "archetype", "archetype": "squat", "target": "stance", "allow": { "stance": ["standard","sumo"] }, "errorMessage": "Squat stance can be standard or sumo." },
+    { "scope": "archetype", "archetype": "squat", "target": "bar_position", "allow": { "bar_position": ["high_bar","low_bar"] }, "errorMessage": "Bar position must be high bar or low bar." },
+
+    /* -------- DEADLIFT -------- */
+    { "scope": "archetype", "archetype": "deadlift", "target": "equipment", "allow": { "equipment": ["barbell","dumbbells","kettlebell","smith_machine","machine"] }, "errorMessage": "Deadlift supports barbell, dumbbells, kettlebell, machine or smith machine." },
+    { "scope": "archetype", "archetype": "deadlift", "target": "stance", "allow": { "stance": ["standard","sumo"] }, "errorMessage": "Deadlift stance can be standard or sumo." },
+    { "scope": "archetype", "archetype": "deadlift", "target": "grip_type", "allow": { "grip_type": ["pronated","mixed"] }, "errorMessage": "Deadlift grip can be pronated or mixed." },
+
+    /* -------- LUNGE -------- */
+    { "scope": "archetype", "archetype": "lunge", "target": "equipment", "allow": { "equipment": ["dumbbells","barbell","kettlebell","bodyweight","smith_machine","cable","band"] }, "errorMessage": "Lunge supports dumbbells, barbell, kettlebell, bodyweight, smith, cable or band." },
+
+    /* -------- HIP THRUST -------- */
+    { "scope": "archetype", "archetype": "hip_thrust", "target": "equipment", "allow": { "equipment": ["barbell","dumbbells","kettlebell","machine","smith_machine","bodyweight"] }, "errorMessage": "Hip thrust supports barbell, dumbbells, kettlebell, machine, smith or bodyweight." },
+
+    /* -------- LEG PRESS -------- */
+    { "scope": "archetype", "archetype": "leg_press", "target": "equipment", "allow": { "equipment": ["machine"] }, "errorMessage": "Leg press is a machine exercise." },
+
+    /* -------- PULL-UP -------- */
+    { "scope": "archetype", "archetype": "pull_up", "target": "equipment", "allow": { "equipment": ["bodyweight","machine"] }, "errorMessage": "Pull-up is bodyweight or assisted machine only." },
+    { "scope": "archetype", "archetype": "pull_up", "target": "grip_type", "allow": { "grip_type": ["pronated","supinated","neutral"] }, "errorMessage": "Pull-up grip can be pronated, supinated or neutral." },
+
+    /* -------- LAT PULLDOWN -------- */
+    { "scope": "archetype", "archetype": "lat_pulldown", "target": "equipment", "allow": { "equipment": ["cable","machine"] }, "errorMessage": "Lat pulldown requires cable or machine." },
+
+    /* -------- ROW -------- */
+    { "scope": "archetype", "archetype": "row", "target": "equipment", "allow": { "equipment": ["barbell","dumbbells","cable","machine","smith_machine","kettlebell"] }, "errorMessage": "Rows support barbell, dumbbells, kettlebell, cable, machine or smith machine." },
+    { "scope": "archetype", "archetype": "row", "target": "body_angle", "allow": { "body_angle": ["seated","standing","bent_over","chest_supported"] }, "errorMessage": "Row body angle must be seated, standing, bent_over or chest_supported." },
+
+    /* -------- BICEPS CURL -------- */
+    { "scope": "archetype", "archetype": "biceps_curl", "target": "equipment", "allow": { "equipment": ["barbell","dumbbells","cable","machine","band","kettlebell"] }, "errorMessage": "Biceps curl supports barbell, dumbbells, kettlebell, cable, machine or band." },
+
+    /* -------- TRICEPS EXTENSION -------- */
+    { "scope": "archetype", "archetype": "triceps_extension", "target": "equipment", "allow": { "equipment": ["dumbbells","cable","machine","barbell","band","kettlebell"] }, "errorMessage": "Triceps extension supports dumbbells, cable, machine, barbell, kettlebell or band." },
+
+    /* -------- LATERAL RAISE -------- */
+    { "scope": "archetype", "archetype": "lateral_raise", "target": "equipment", "allow": { "equipment": ["dumbbells","cable","machine","band","kettlebell"] }, "errorMessage": "Lateral raise supports dumbbells, cable, machine, band or kettlebell." },
+
+    /* -------- SHRUG -------- */
+    { "scope": "archetype", "archetype": "shrug", "target": "equipment", "allow": { "equipment": ["barbell","dumbbells","machine","smith_machine","cable"] }, "errorMessage": "Shrug supports barbell, dumbbells, machine, smith or cable." },
+
+    /* -------- CORE -------- */
+    { "scope": "archetype", "archetype": "crunch", "target": "equipment", "allow": { "equipment": ["bodyweight","machine"] }, "errorMessage": "Crunch supports bodyweight or machine." },
+    { "scope": "archetype", "archetype": "plank", "target": "equipment", "allow": { "equipment": ["bodyweight"] }, "errorMessage": "Plank is a bodyweight exercise." },
+    { "scope": "archetype", "archetype": "back_extension", "target": "equipment", "allow": { "equipment": ["bodyweight","machine"] }, "errorMessage": "Back extension supports bodyweight or machine." }
+  ]
+}
