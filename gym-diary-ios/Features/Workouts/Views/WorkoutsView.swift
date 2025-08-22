@@ -911,6 +911,27 @@ struct WorkoutDetailView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
+                    // Session Timer (if active session)
+                    if let activeSession = sessionManager.activeSession, activeSession.workoutId == workout.id {
+                        HStack {
+                            Image(systemName: "timer")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(DesignSystem.Colors.primary)
+                            
+                            Text(activeSession.formattedDuration)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(DesignSystem.Colors.primary)
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal, DesignSystem.Spacing.large)
+                        .padding(.vertical, DesignSystem.Spacing.medium)
+                        .background(
+                            Rectangle()
+                                .fill(DesignSystem.Colors.primary.opacity(0.1))
+                        )
+                    }
+                    
                     // Header
                     HStack {
                         Image(systemName: workoutIcon.systemName)
@@ -935,26 +956,27 @@ struct WorkoutDetailView: View {
                         
                         Spacer()
                         
-                        Button("Edit") {
-                            editWorkoutName = workout.name
-                            editSelectedSectionId = workout.sectionId
-                            showingEditWorkout = true
-                        }
-                        .foregroundColor(DesignSystem.Colors.primary)
-                        
-                        Button(action: { confirmDelete = true }) {
-                            Image(systemName: "trash")
-                        }
-                        .foregroundColor(.red)
-                        .padding(.horizontal, 8)
-                        .alert("Are you sure you want to delete this workout?", isPresented: $confirmDelete) {
-                            Button("Cancel", role: .cancel) {}
-                            Button("Delete", role: .destructive) {
-                                onDelete?()
+                        // Only show Edit/Delete if no active session
+                        if sessionManager.activeSession?.workoutId != workout.id {
+                            Button("Edit") {
+                                editWorkoutName = workout.name
+                                editSelectedSectionId = workout.sectionId
+                                showingEditWorkout = true
+                            }
+                            .foregroundColor(DesignSystem.Colors.primary)
+                            
+                            Button(action: { confirmDelete = true }) {
+                                Image(systemName: "trash")
+                            }
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 8)
+                            .alert("Are you sure you want to delete this workout?", isPresented: $confirmDelete) {
+                                Button("Cancel", role: .cancel) {}
+                                Button("Delete", role: .destructive) {
+                                    onDelete?()
+                                }
                             }
                         }
-
-
                     }
                     .padding(DesignSystem.Spacing.large)
                     
@@ -997,17 +1019,44 @@ struct WorkoutDetailView: View {
                         }
                     }
                     
-                    // Start Workout Button
-                    GradientButton(
-                        title: "Start Workout",
-                        gradient: LinearGradient(colors: [workoutColor.color, workoutColor.color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    ) {
-                        startWorkoutSession()
+                    // Session Action Buttons
+                    if let activeSession = sessionManager.activeSession, activeSession.workoutId == workout.id {
+                        // Active session - show Complete and Cancel buttons
+                        HStack(spacing: DesignSystem.Spacing.medium) {
+                            Button("Cancel") {
+                                sessionManager.cancelSession(activeSession)
+                            }
+                            .font(.headline)
+                            .foregroundColor(.red)
+                            .padding(.horizontal, DesignSystem.Spacing.large)
+                            .padding(.vertical, DesignSystem.Spacing.medium)
+                            .background(
+                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                    .stroke(Color.red, lineWidth: 2)
+                            )
+                            
+                            GradientButton(
+                                title: "Complete",
+                                gradient: LinearGradient(colors: [workoutColor.color, workoutColor.color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            ) {
+                                sessionManager.completeSession(activeSession)
+                            }
+                        }
+                        .padding(.horizontal, DesignSystem.Spacing.large)
+                        .padding(.bottom, DesignSystem.Spacing.large)
+                    } else {
+                        // No active session - show Start Workout button
+                        GradientButton(
+                            title: "Start Workout",
+                            gradient: LinearGradient(colors: [workoutColor.color, workoutColor.color.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        ) {
+                            startWorkoutSession()
+                        }
+                        .disabled(workout.exercises.isEmpty && workout.circuits.isEmpty)
+                        .opacity((workout.exercises.isEmpty && workout.circuits.isEmpty) ? 0.5 : 1.0)
+                        .padding(.horizontal, DesignSystem.Spacing.large)
+                        .padding(.bottom, DesignSystem.Spacing.large)
                     }
-                    .disabled(workout.exercises.isEmpty && workout.circuits.isEmpty)
-                    .opacity((workout.exercises.isEmpty && workout.circuits.isEmpty) ? 0.5 : 1.0)
-                    .padding(.horizontal, DesignSystem.Spacing.large)
-                    .padding(.bottom, DesignSystem.Spacing.large)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)

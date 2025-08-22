@@ -13,6 +13,8 @@ struct SessionsView: View {
     @State private var selectedTab: SessionTab = .new
     @State private var showingWorkoutSelector = false
     @State private var showingEmptyWorkout = false
+    @State private var showingCreateWorkout = false
+    @State private var showingActiveWorkout = false
     
     enum SessionTab: String, CaseIterable {
         case new = "new"
@@ -29,6 +31,11 @@ struct SessionsView: View {
                 VStack(spacing: 0) {
                     // Top Navigation Bar (like Apple Fitness+)
                     topNavigationBar
+                    
+                    // Active Session Timer Tab (if any)
+                    if let session = sessionManager.activeSession {
+                        activeSessionTimerTab(session: session)
+                    }
                     
                     // Content based on selected tab
                     TabView(selection: $selectedTab) {
@@ -49,11 +56,48 @@ struct SessionsView: View {
             WorkoutSelectorView { workout in
                 sessionManager.startSession(from: workout)
                 showingWorkoutSelector = false
+            } onNoWorkouts: {
+                showingWorkoutSelector = false
+                showingCreateWorkout = true
             }
         }
         .sheet(isPresented: $showingEmptyWorkout) {
             EmptyWorkoutView {
                 showingEmptyWorkout = false
+            }
+        }
+        .sheet(isPresented: $showingCreateWorkout) {
+            CreateWorkoutView(
+                sections: [],
+                newWorkoutName: .constant(""),
+                selectedSectionId: .constant(""),
+                onCancel: { showingCreateWorkout = false },
+                onCreate: {
+                    // Create workout and start session
+                    let newWorkout = Workout(
+                        id: UUID().uuidString,
+                        userId: "user123",
+                        name: "New Workout",
+                        exercises: [],
+                        sectionId: ""
+                    )
+                    // Add to sections (you'll need to implement this)
+                    // For now, just start the session
+                    sessionManager.startSession(from: newWorkout)
+                    showingCreateWorkout = false
+                },
+                isEditing: false
+            )
+        }
+        .fullScreenCover(isPresented: $showingActiveWorkout) {
+            if let activeSession = sessionManager.activeSession,
+               let workout = sessionManager.workouts.first(where: { $0.id == activeSession.workoutId }) {
+                WorkoutDetailView(
+                    workout: .constant(workout),
+                    sections: [],
+                    onDelete: nil,
+                    onDismiss: { showingActiveWorkout = false }
+                )
             }
         }
     }
@@ -123,29 +167,60 @@ struct SessionsView: View {
         .background(
             RoundedRectangle(cornerRadius: 25)
                 .fill(Color(.systemGray6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 25)
+                        .stroke(Color(.systemGray4), lineWidth: 1)
+                )
         )
         .padding(.horizontal, 20)
         .padding(.top, 10)
+    }
+    
+    // MARK: - Active Session Timer Tab
+    private func activeSessionTimerTab(session: Session) -> some View {
+        Button(action: {
+            showingActiveWorkout = true
+        }) {
+            HStack {
+                Image(systemName: "timer")
+                    .font(.system(size: 14, weight: .medium))
+                
+                Text(session.formattedDuration)
+                    .font(.system(size: 14, weight: .medium))
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(DesignSystem.Colors.primary)
+            )
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
     }
     
     // MARK: - New Session View
     private var newSessionView: some View {
         ScrollView {
             VStack(spacing: DesignSystem.Spacing.large) {
-                // Active Session Panel (if any)
-                if let session = sessionManager.activeSession {
-                    ActiveSessionPanel(session: session) {
-                        sessionManager.completeSession(session)
-                    } onCancel: {
-                        sessionManager.cancelSession(session)
-                    }
-                    .padding(.horizontal, DesignSystem.Spacing.large)
-                } else {
-                    // New Session Options
+                // New Session Options (only show if no active session)
+                if sessionManager.activeSession == nil {
                     VStack(spacing: DesignSystem.Spacing.large) {
                         // Start with Empty Workout
                         Button(action: {
-                            showingEmptyWorkout = true
+                            // Start empty session immediately
+                            let emptyWorkout = Workout(
+                                id: UUID().uuidString,
+                                userId: "user123",
+                                name: "Empty Workout",
+                                exercises: [],
+                                sectionId: ""
+                            )
+                            sessionManager.startSession(from: emptyWorkout)
                         }) {
                             VStack(spacing: DesignSystem.Spacing.medium) {
                                 Image(systemName: "plus.circle.fill")
@@ -209,6 +284,25 @@ struct SessionsView: View {
                     }
                     .padding(.horizontal, DesignSystem.Spacing.large)
                     .padding(.top, DesignSystem.Spacing.large)
+                } else {
+                    // Active session message
+                    VStack(spacing: DesignSystem.Spacing.large) {
+                        Image(systemName: "timer.circle.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(DesignSystem.Colors.primary)
+                        
+                        Text("Workout in Progress")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                        
+                        Text("Complete or cancel your current workout before starting a new one")
+                            .font(.body)
+                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, DesignSystem.Spacing.large)
+                    .padding(.top, DesignSystem.Spacing.extraLarge)
                 }
                 
                 Spacer(minLength: 100)
@@ -282,7 +376,7 @@ struct SessionsView: View {
     }
 }
 
-// MARK: - Empty Workout View
+// MARK: - Empty Workout View (simplified)
 struct EmptyWorkoutView: View {
     let onDismiss: () -> Void
     @Environment(\.colorScheme) private var colorScheme
@@ -295,27 +389,13 @@ struct EmptyWorkoutView: View {
                     .fontWeight(.bold)
                     .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
                 
-                Text("Start a free-form workout session where you can add exercises as you go")
+                Text("Starting empty workout session...")
                     .font(.body)
                     .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, DesignSystem.Spacing.large)
                 
                 Spacer()
-                
-                Button("Start Empty Session") {
-                    // TODO: Implement empty session start
-                    onDismiss()
-                }
-                .font(.headline)
-                .foregroundColor(.white)
-                .padding(.horizontal, DesignSystem.Spacing.large)
-                .padding(.vertical, DesignSystem.Spacing.medium)
-                .background(
-                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                        .fill(DesignSystem.Colors.primary)
-                )
-                .padding(.bottom, DesignSystem.Spacing.large)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

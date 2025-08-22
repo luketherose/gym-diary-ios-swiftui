@@ -9,6 +9,7 @@ import SwiftUI
 
 struct WorkoutSelectorView: View {
     let onWorkoutSelected: (Workout) -> Void
+    let onNoWorkouts: () -> Void
     
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -28,9 +29,45 @@ struct WorkoutSelectorView: View {
                         .padding(.horizontal, DesignSystem.Spacing.large)
                     
                     // Workouts List
-                    if filteredWorkouts.isEmpty {
+                    if sessionManager.workouts.isEmpty {
+                        // No workouts at all
                         VStack(spacing: DesignSystem.Spacing.large) {
                             Image(systemName: "dumbbell")
+                                .font(.system(size: 60))
+                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                            
+                            Text("No Workouts Available")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                            
+                            Text("Create your first workout to start training sessions")
+                                .font(.body)
+                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                                .multilineTextAlignment(.center)
+                            
+                            Button(action: {
+                                dismiss()
+                                onNoWorkouts()
+                            }) {
+                                Text("Create Workout")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, DesignSystem.Spacing.large)
+                                    .padding(.vertical, DesignSystem.Spacing.medium)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
+                                            .fill(DesignSystem.Colors.primary)
+                                    )
+                            }
+                            .padding(.top, DesignSystem.Spacing.medium)
+                        }
+                        .padding(.horizontal, DesignSystem.Spacing.large)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if filteredWorkouts.isEmpty {
+                        // No workouts match search
+                        VStack(spacing: DesignSystem.Spacing.large) {
+                            Image(systemName: "magnifyingglass")
                                 .font(.system(size: 60))
                                 .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
                             
@@ -39,7 +76,7 @@ struct WorkoutSelectorView: View {
                                 .fontWeight(.semibold)
                                 .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
                             
-                            Text("Create some workouts first to start training sessions")
+                            Text("No workouts match your search criteria")
                                 .font(.body)
                                 .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
                                 .multilineTextAlignment(.center)
@@ -148,6 +185,8 @@ struct WorkoutSelectionCard: View {
 #Preview {
     WorkoutSelectorView { workout in
         print("Selected workout: \(workout.name)")
+    } onNoWorkouts: {
+        print("No workouts available, creating new one.")
     }
     .preferredColorScheme(.dark)
 }

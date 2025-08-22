@@ -15,6 +15,7 @@ class SessionManager: ObservableObject {
     @Published var pastSessions: [Session] = []
     @Published var shouldNavigateToSessions = false
     @Published var workouts: [Workout] = []
+    @Published var sessionTimer: Timer?
     
     private init() {
         loadSessions()
@@ -57,6 +58,9 @@ class SessionManager: ObservableObject {
         
         activeSession = newSession
         shouldNavigateToSessions = true
+        
+        // Start timer to update duration
+        startSessionTimer()
     }
     
     func completeSession(_ session: Session) {
@@ -67,6 +71,9 @@ class SessionManager: ObservableObject {
         
         pastSessions.insert(completedSession, at: 0)
         activeSession = nil
+        
+        // Stop timer
+        stopSessionTimer()
     }
     
     func cancelSession(_ session: Session) {
@@ -76,6 +83,9 @@ class SessionManager: ObservableObject {
         
         pastSessions.insert(cancelledSession, at: 0)
         activeSession = nil
+        
+        // Stop timer
+        stopSessionTimer()
     }
     
     private func loadSessions() {
@@ -88,5 +98,21 @@ class SessionManager: ObservableObject {
         // TODO: Load from Firebase when integrated
         // For now, start with empty state
         workouts = []
+    }
+    
+    private func startSessionTimer() {
+        stopSessionTimer() // Stop any existing timer
+        
+        sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            // Force UI update by triggering objectWillChange
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+    }
+    
+    private func stopSessionTimer() {
+        sessionTimer?.invalidate()
+        sessionTimer = nil
     }
 }

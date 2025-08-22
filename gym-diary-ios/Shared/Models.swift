@@ -345,6 +345,16 @@ struct Session: Identifiable, Codable {
     let createdAt: Date
     let updatedAt: Date
     
+    var formattedDuration: String {
+        guard let startTime = startedAt else { return "00:00" }
+        
+        let duration = Int(Date().timeIntervalSince(startTime))
+        let minutes = duration / 60
+        let seconds = duration % 60
+        
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+    
     init(id: String = UUID().uuidString,
          userId: String,
          workoutId: String,
