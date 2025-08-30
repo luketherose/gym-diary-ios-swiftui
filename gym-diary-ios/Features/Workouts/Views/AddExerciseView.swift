@@ -5,6 +5,7 @@ struct AddExerciseView: View {
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var viewModel = AddExerciseViewModel()
     @FocusState private var isSearchFieldFocused: Bool
+    @State private var showingExerciseConfiguration = false
     
     let workoutId: String
     let onAdd: (Exercise) -> Void
@@ -55,30 +56,47 @@ struct AddExerciseView: View {
                     .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
                     .padding(.horizontal, DesignSystem.Spacing.large)
                 
-                TextField("Search by name or muscle (e.g. bench, chest)", text: $viewModel.query)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .focused($isSearchFieldFocused)
-                    .overlay(
-                        HStack {
-                            Spacer()
-                            if !viewModel.query.isEmpty {
-                                Button(action: {
-                                    viewModel.query = ""
-                                    viewModel.onQueryChanged()
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(.gray)
-                                        .font(.system(size: 16))
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                .padding(.trailing, 8)
-                            }
+                HStack(spacing: DesignSystem.Spacing.small) {
+                    // Search icon
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                        .font(.system(size: 16))
+                    
+                    // Search text field
+                    TextField("Search by name or muscle (e.g. bench, chest)", text: $viewModel.query)
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .focused($isSearchFieldFocused)
+                    
+                    // Clear button
+                    if !viewModel.query.isEmpty {
+                        Button(action: {
+                            viewModel.query = ""
+                            viewModel.onQueryChanged()
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                                .font(.system(size: 16))
                         }
-                    )
-                    .padding(.horizontal, DesignSystem.Spacing.large)
-                    .onChange(of: viewModel.query) { _, _ in
-                        viewModel.onQueryChanged()
+                        .buttonStyle(PlainButtonStyle())
                     }
+                }
+                .padding(.horizontal, DesignSystem.Spacing.medium)
+                .padding(.vertical, DesignSystem.Spacing.medium)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(DesignSystem.Colors.cardBackground(for: colorScheme))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(
+                                    isSearchFieldFocused ? DesignSystem.Colors.primary : Color(.systemGray4),
+                                    lineWidth: isSearchFieldFocused ? 2 : 1
+                                )
+                        )
+                )
+                .padding(.horizontal, DesignSystem.Spacing.large)
+                .onChange(of: viewModel.query) { _, _ in
+                    viewModel.onQueryChanged()
+                }
             }
             
             // Muscle group filter
@@ -150,20 +168,23 @@ struct AddExerciseView: View {
                 Spacer()
                     .frame(height: DesignSystem.Spacing.medium)
                 ForEach(viewModel.filtered) { archetype in
-                    NavigationLink(destination: ExerciseConfigurationView(
-                        viewModel: viewModel,
-                        workoutId: workoutId,
-                        onAdd: onAdd,
-                        onAddCircuit: onAddCircuit,
-                        isReplacing: isReplacing
-                    ).onAppear {
+                    Button(action: {
                         viewModel.selectArchetype(archetype)
+                        showingExerciseConfiguration = true
                     }) {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(archetype.displayName)
                                     .font(.headline)
                                     .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                                
+                                // Show secondary muscles if available
+                                if !archetype.secondaryMuscles.isEmpty {
+                                    Text(archetype.secondaryMuscles.joined(separator: ", ").capitalized)
+                                        .font(.caption)
+                                        .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                                        .lineLimit(2)
+                                }
                             }
                             
                             Spacer()
@@ -182,6 +203,15 @@ struct AddExerciseView: View {
             }
             .padding(.horizontal, DesignSystem.Spacing.large)
             .padding(.bottom, DesignSystem.Spacing.large)
+        }
+        .fullScreenCover(isPresented: $showingExerciseConfiguration) {
+            ExerciseConfigurationView(
+                viewModel: viewModel,
+                workoutId: workoutId,
+                onAdd: onAdd,
+                onAddCircuit: onAddCircuit,
+                isReplacing: isReplacing
+            )
         }
     }
 

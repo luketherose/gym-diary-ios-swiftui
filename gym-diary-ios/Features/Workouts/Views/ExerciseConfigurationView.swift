@@ -29,6 +29,14 @@ struct ExerciseConfigurationView: View {
         }
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("< Workouts") {
+                    dismiss()
+                }
+                .foregroundColor(DesignSystem.Colors.primary)
+            }
+        }
 
     }
     
@@ -203,13 +211,11 @@ struct ExerciseConfigurationView: View {
 // MARK: - Preview
 #Preview {
     let viewModel = AddExerciseViewModel()
-    NavigationView {
-        ExerciseConfigurationView(
-            viewModel: viewModel,
-            workoutId: "preview",
-            onAdd: { _ in },
-            onAddCircuit: { _, _ in },
-            isReplacing: false
-        )
-    }
+    ExerciseConfigurationView(
+        viewModel: viewModel,
+        workoutId: "preview",
+        onAdd: { _ in },
+        onAddCircuit: { _, _ in },
+        isReplacing: false
+    )
 }

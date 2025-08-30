@@ -17,7 +17,7 @@ struct ContentView: View {
             WorkoutsView()
                 .tabItem {
                     Image(systemName: "dumbbell.fill")
-                    Text("Workouts")
+                    Text("Workout")
                 }
                 .tag(0)
             
@@ -37,6 +37,11 @@ struct ContentView: View {
         }
         .accentColor(.blue)
         .preferredColorScheme(isDarkTheme ? .dark : .light)
+        .background(
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea(.all, edges: .bottom)
+        )
         .onChange(of: sessionManager.shouldNavigateToSessions) { _, shouldNavigate in
             if shouldNavigate {
                 selectedTab = 1

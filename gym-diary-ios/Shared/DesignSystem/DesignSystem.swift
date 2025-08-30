@@ -14,7 +14,7 @@ struct DesignSystem {
         
         // Theme-aware colors
         static func background(for colorScheme: ColorScheme) -> Color {
-            colorScheme == .dark ? Color(.systemGray6) : Color(.systemBackground)
+            colorScheme == .dark ? Color.black : Color(.systemBackground)
         }
         
         static func cardBackground(for colorScheme: ColorScheme) -> Color {

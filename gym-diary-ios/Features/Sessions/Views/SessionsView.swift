@@ -88,6 +88,7 @@ struct SessionsView: View {
                 },
                 isEditing: false
             )
+            .presentationDetents([.large])
         }
         .fullScreenCover(isPresented: $showingActiveWorkout) {
             if let activeSession = sessionManager.activeSession,

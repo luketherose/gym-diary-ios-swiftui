@@ -1,6 +1,14 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+// MARK: - Scroll Offset Preference Key
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 // MARK: - Drag State
 enum DragState: Equatable {
     case none
@@ -21,6 +29,7 @@ struct WorkoutsView: View {
     @State private var dragState: DragState = .none
     @State private var showingWorkoutDetails = false
     @State private var workoutToShowDetails: Workout? = nil
+    @State private var scrollOffset: CGFloat = 0
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
@@ -29,22 +38,64 @@ struct WorkoutsView: View {
                 DesignSystem.Colors.background(for: colorScheme)
                     .ignoresSafeArea()
                 
-                VStack(spacing: DesignSystem.Spacing.large) {
-                    // Header
-                    HStack {
+                VStack(spacing: 0) {
+                    // Conditional translucent header (appears when scrolling)
+                    if scrollOffset < -50 {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                            // Current date
+                            Text(currentDate)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                                .textCase(.uppercase)
+                            
+                            // Main title
+                            Text("Workouts")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, DesignSystem.Spacing.large)
+                        .padding(.vertical, DesignSystem.Spacing.medium)
+                        .background(.ultraThinMaterial)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .animation(.easeInOut(duration: 0.3), value: scrollOffset)
+                    }
+                    
+                    // Large header with date and title (scrolls with content)
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
+                        // Current date
+                        Text(currentDate)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
+                            .textCase(.uppercase)
+                        
+                        // Main title
                         Text("Workouts")
                             .font(.largeTitle)
                             .fontWeight(.bold)
                             .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        
-                        Spacer()
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, DesignSystem.Spacing.large)
                     .padding(.top, DesignSystem.Spacing.large)
+                    .padding(.bottom, DesignSystem.Spacing.large)
+                    .opacity(scrollOffset < -50 ? 0 : 1)
+                    .animation(.easeInOut(duration: 0.3), value: scrollOffset)
                     
-                    // Sections
+                                        // Sections
                     ScrollView {
                         LazyVStack(spacing: DesignSystem.Spacing.large) {
+                            // Add GeometryReader to track scroll position
+                            GeometryReader { geometry in
+                                Color.clear
+                                    .preference(key: ScrollOffsetPreferenceKey.self, value: geometry.frame(in: .named("scroll")).minY)
+                            }
+                            .frame(height: 0)
+                            
+                            // Show Default section only when no sections exist (My Workouts will always exist)
                             // Show Default section only when no sections exist (My Workouts will always exist)
                             if sections.isEmpty {
                                 DefaultWorkoutSectionView(
@@ -121,6 +172,10 @@ struct WorkoutsView: View {
                         .padding(.horizontal, DesignSystem.Spacing.large)
                         .padding(.bottom, DesignSystem.Spacing.large)
                     }
+                    .coordinateSpace(name: "scroll")
+                    .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                        scrollOffset = value
+                    }
                 }
             }
         }
@@ -134,7 +189,7 @@ struct WorkoutsView: View {
         } message: {
             Text("Enter the name for your new section.")
         }
-        .sheet(isPresented: $showingCreateWorkout) {
+        .fullScreenCover(isPresented: $showingCreateWorkout) {
             CreateWorkoutView(
                 sections: sections,
                 newWorkoutName: $newWorkoutName,
@@ -148,7 +203,6 @@ struct WorkoutsView: View {
                 },
                 isEditing: false
             )
-            .presentationDetents([.height(200)])
         }
         .fullScreenCover(isPresented: $showingWorkoutDetails) {
             if let workout = workoutToShowDetails {
@@ -354,6 +408,14 @@ struct WorkoutsView: View {
                 return
             }
         }
+    }
+    
+    // MARK: - Computed Properties
+    private var currentDate: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.dateFormat = "EEEE, d MMM"
+        return formatter.string(from: Date()).uppercased()
     }
 }
 
@@ -570,10 +632,6 @@ struct EmptyWorkoutSectionView: View {
     
     var body: some View {
         VStack(spacing: DesignSystem.Spacing.medium) {
-            Image(systemName: "dumbbell")
-                .font(.system(size: 40))
-                .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
-            
             Text("No workouts yet")
                 .font(.headline)
                 .foregroundColor(DesignSystem.Colors.textSecondary(for: colorScheme))
@@ -621,10 +679,6 @@ struct DefaultWorkoutSectionView: View {
                 VStack(spacing: DesignSystem.Spacing.large) {
                     Button(action: onAddWorkout) {
                         VStack(spacing: DesignSystem.Spacing.medium) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 60))
-                                .foregroundColor(DesignSystem.Colors.primary)
-                            
                             Text("Create Your First Workout")
                                 .font(.headline)
                                 .fontWeight(.semibold)
@@ -785,17 +839,8 @@ struct WorkoutCard: View {
             showingWorkoutDetails = true
         }) {
             VStack(alignment: .leading, spacing: 0) {
-                // Header with icon and gradient background
+                // Header with exercise count
                 HStack {
-                    Image(systemName: workoutIcon.systemName)
-                        .font(.title2)
-                        .foregroundColor(.white)
-                        .frame(width: 32, height: 32)
-                        .background(
-                            Circle()
-                                .fill(workoutColor.color)
-                        )
-                    
                     Spacer()
                     
                     // Exercise count badge
@@ -1085,7 +1130,7 @@ struct WorkoutDetailView: View {
                 isReplacing: false
             )
         }
-        .sheet(isPresented: $showingEditWorkout) {
+        .fullScreenCover(isPresented: $showingEditWorkout) {
             CreateWorkoutView(
                 sections: sections,
                 newWorkoutName: $editWorkoutName,
@@ -1099,7 +1144,6 @@ struct WorkoutDetailView: View {
                 },
                 isEditing: true
             )
-            .presentationDetents([.height(200)])
         }
         .onChange(of: sessionManager.shouldNavigateToSessions) { _, shouldNavigate in
             if shouldNavigate {

@@ -9,7 +9,6 @@ struct CreateWorkoutView: View {
     let onCreate: () -> Void
     let isEditing: Bool
     @Environment(\.colorScheme) private var colorScheme
-    @FocusState private var isWorkoutNameFocused: Bool
     
     // Computed property to handle sections and default selection
     private var availableSections: [WorkoutSection] {
@@ -26,89 +25,60 @@ struct CreateWorkoutView: View {
     }
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                DesignSystem.Colors.background(for: colorScheme)
-                    .ignoresSafeArea()
+        ZStack {
+            DesignSystem.Colors.background(for: colorScheme)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Header with title and buttons
+                HStack {
+                    Button(isEditing ? "Close" : "Cancel") {
+                        onCancel()
+                    }
+                    .foregroundColor(DesignSystem.Colors.primary)
+                    .font(.body)
+                    
+                    Spacer()
+                    
+                    Text(isEditing ? "Edit Workout" : "Create Workout")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
+                    
+                    Spacer()
+                    
+                    Button(isEditing ? "Save" : "Create") {
+                        onCreate()
+                    }
+                    .foregroundColor(DesignSystem.Colors.primary)
+                    .font(.body)
+                    .disabled(newWorkoutName.isEmpty || selectedSectionId.isEmpty)
+                }
+                .padding(.horizontal, DesignSystem.Spacing.large)
+                .padding(.top, DesignSystem.Spacing.large)
+                .padding(.bottom, DesignSystem.Spacing.large)
                 
+                // Content
                 VStack(spacing: DesignSystem.Spacing.large) {
-                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                        Text("Workout Name")
-                            .font(.headline)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        
-                        TextField("Enter workout name", text: $newWorkoutName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .focused($isWorkoutNameFocused)
-                    }
+                    WorkoutInputField(
+                        label: "Workout Name",
+                        placeholder: "Enter workout name",
+                        text: $newWorkoutName,
+                        autoFocus: true
+                    )
                     
-                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.small) {
-                        Text("Section")
-                            .font(.headline)
-                            .foregroundColor(DesignSystem.Colors.textPrimary(for: colorScheme))
-                        
-                        Picker("Section", selection: $selectedSectionId) {
-                            ForEach(availableSections, id: \.id) { section in
-                                Text(section.name)
-                                    .tag(section.id)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.medium)
-                                .fill(DesignSystem.Colors.cardBackground(for: colorScheme))
-                        )
-                    }
+                    WorkoutSectionPicker(
+                        label: "Section",
+                        sections: availableSections,
+                        selectedSectionId: $selectedSectionId
+                    )
                 }
-                .padding(DesignSystem.Spacing.large)
-            }
-            .navigationTitle(isEditing ? "Edit Workout" : "Create Workout")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if isEditing {
-                    // For editing: only Close button on the right
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Save") {
-                            onCreate()
-                        }
-                        .disabled(newWorkoutName.isEmpty || selectedSectionId.isEmpty)
-                        .foregroundColor(DesignSystem.Colors.primary)
-                    }
-                    
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Close") {
-                            onCancel()
-                        }
-                        .foregroundColor(DesignSystem.Colors.primary)
-                    }
-                } else {
-                    // For creation: Cancel left, Create right
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Cancel") {
-                            onCancel()
-                        }
-                        .foregroundColor(DesignSystem.Colors.primary)
-                    }
-                    
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Create") {
-                            onCreate()
-                        }
-                        .disabled(newWorkoutName.isEmpty || selectedSectionId.isEmpty)
-                        .foregroundColor(DesignSystem.Colors.primary)
-                    }
-                }
+                .padding(.horizontal, DesignSystem.Spacing.large)
+                
+                Spacer()
             }
         }
         .onAppear {
-            // Auto-focus the workout name field when the view appears (only for creation)
-            if !isEditing {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    isWorkoutNameFocused = true
-                }
-            }
-            
             // Preselect section if not already selected (only for creation, not editing)
             if !isEditing && selectedSectionId.isEmpty {
                 if let myWorkoutsSection = availableSections.first(where: { $0.name == "My Workouts" }) {
